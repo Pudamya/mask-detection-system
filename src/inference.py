@@ -24,11 +24,18 @@ class BasicInference:
         self.img_size = img_size
         self.classes = classes or ["with_mask", "without_mask"]
 
-        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-        self.face_cascade = cv2.CascadeClassifier(cascade_path)
-
-        eye_cascade_path = cv2.data.haarcascades + "haarcascade_eye.xml"
-        self.eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
+        self.face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+        )
+        self.face_alt_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml"
+        )
+        self.profile_face_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_profileface.xml"
+        )
+        self.eye_cascade = cv2.CascadeClassifier(
+            cv2.data.haarcascades + "haarcascade_eye.xml"
+        )
 
         self.transform = transforms.Compose([
             transforms.Resize((img_size, img_size)),
@@ -92,22 +99,6 @@ class BasicInference:
 
         return predicted_class, confidence, mean_probs
 
-    def has_closeup_face_pattern(self, image_rgb):
-        gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
-        gray = cv2.equalizeHist(gray)
-
-        h, w = gray.shape
-        upper_half = gray[: max(h // 2, 1), :]
-
-        eyes = self.eye_cascade.detectMultiScale(
-            upper_half,
-            scaleFactor=1.05,
-            minNeighbors=4,
-            minSize=(20, 20)
-        )
-
-        return len(eyes) >= 2
-
     def _apply_nms(self, faces, overlap_threshold=0.3):
         boxes = []
         for (x, y, w, h) in faces:
@@ -138,7 +129,7 @@ class BasicInference:
             inter_h = np.maximum(0, iy2 - iy1)
             inter = inter_w * inter_h
 
-            iou = inter / (areas[i] + areas[order[1:]] - inter)
+            iou = inter / (areas[i] + areas[order[1:]] - inter + 1e-6)
             inds = np.where(iou <= overlap_threshold)[0]
             order = order[inds + 1]
 
@@ -153,6 +144,90 @@ class BasicInference:
             ))
         return result
 
+    def get_combined_face_detections(self, gray):
+        detections = []
+
+        frontal_1 = self.face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.05,
+            minNeighbors=5,
+            minSize=(45, 45),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        if len(frontal_1) > 0:
+            detections.extend(frontal_1)
+
+        frontal_2 = self.face_alt_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.03,
+            minNeighbors=4,
+            minSize=(35, 35),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        if len(frontal_2) > 0:
+            detections.extend(frontal_2)
+
+        profile = self.profile_face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.05,
+            minNeighbors=4,
+            minSize=(35, 35),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+        if len(profile) > 0:
+            detections.extend(profile)
+
+        if len(detections) == 0:
+            return []
+
+        return self._apply_nms(detections, overlap_threshold=0.3)
+
+    def compute_skin_ratio(self, image_rgb):
+        ycrcb = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2YCrCb)
+        lower = np.array([0, 133, 77], dtype=np.uint8)
+        upper = np.array([255, 173, 127], dtype=np.uint8)
+        mask = cv2.inRange(ycrcb, lower, upper)
+        skin_ratio = float(np.count_nonzero(mask)) / float(mask.size)
+        return skin_ratio
+
+    def compute_edge_density(self, image_rgb):
+        gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+        edges = cv2.Canny(gray, 100, 200)
+        edge_density = float(np.count_nonzero(edges)) / float(edges.size)
+        return edge_density
+
+    def has_closeup_face_pattern(self, image_rgb):
+        gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+        gray = cv2.equalizeHist(gray)
+
+        h, w = gray.shape
+        upper_half = gray[: max(h // 2, 1), :]
+
+        eyes = self.eye_cascade.detectMultiScale(
+            upper_half,
+            scaleFactor=1.05,
+            minNeighbors=4,
+            minSize=(18, 18)
+        )
+
+        profile = self.profile_face_cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.05,
+            minNeighbors=4,
+            minSize=(30, 30),
+            flags=cv2.CASCADE_SCALE_IMAGE
+        )
+
+        skin_ratio = self.compute_skin_ratio(image_rgb)
+        edge_density = self.compute_edge_density(image_rgb)
+
+        eyes_detected = len(eyes) >= 1
+        profile_detected = len(profile) >= 1
+        skin_like = skin_ratio >= 0.12
+        not_qr_like = edge_density <= 0.22
+
+        return (eyes_detected or profile_detected or skin_like) and not_qr_like
+
     def detect_images(self, image_path):
         image = cv2.imread(image_path)
         if image is None:
@@ -162,30 +237,12 @@ class BasicInference:
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
 
-        faces = self.face_cascade.detectMultiScale(
-            gray,
-            scaleFactor=1.05,
-            minNeighbors=5,
-            minSize=(45, 45),
-            flags=cv2.CASCADE_SCALE_IMAGE
-        )
-
-        if len(faces) == 0:
-            faces = self.face_cascade.detectMultiScale(
-                gray,
-                scaleFactor=1.03,
-                minNeighbors=4,
-                minSize=(35, 35),
-                flags=cv2.CASCADE_SCALE_IMAGE
-            )
-
-        if len(faces) > 0:
-            faces = self._apply_nms(faces, overlap_threshold=0.3)
+        faces = self.get_combined_face_detections(gray)
 
         results = []
         annotated = image_rgb.copy()
 
-        # No face box found: allow close-up face fallback only if eye pattern exists
+        # Close-up / blurred / partial face fallback
         if len(faces) == 0:
             if not self.has_closeup_face_pattern(image_rgb):
                 return annotated, results
