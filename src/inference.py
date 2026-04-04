@@ -27,9 +27,9 @@ class BasicInference:
         self.model = model
         self.device = device
         self.img_size = img_size
-        self.classes = classes or ['with_mask', 'without_mask']
+        self.classes = classes or ["with_mask", "without_mask"]
 
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         self.face_cascade = cv2.CascadeClassifier(cascade_path)
 
         self.transform = transforms.Compose([
@@ -155,6 +155,7 @@ class BasicInference:
             minSize=(45, 45),
             flags=cv2.CASCADE_SCALE_IMAGE
         )
+
         if len(faces) == 0:
             faces = self.face_cascade.detectMultiScale(
                 gray,
@@ -163,6 +164,7 @@ class BasicInference:
                 minSize=(35, 35),
                 flags=cv2.CASCADE_SCALE_IMAGE
             )
+
         if len(faces) > 0:
             faces = self._apply_nms(faces, overlap_threshold=0.3)
 
@@ -177,19 +179,19 @@ class BasicInference:
             display_class = self.format_prediction_label(predicted_class, confidence, threshold=55.0)
 
             results.append({
-                'bbox': (0, 0, w_img, h_img),
-                'class': display_class,
-                'raw_class': predicted_class,
-                'confidence': float(confidence),
-                'probabilities': probabilities,
-                'blur_detected': False,
-                'blur_score': 0.0,
-                'used_full_image_fallback': True
+                "bbox": (0, 0, w_img, h_img),
+                "class": display_class,
+                "raw_class": predicted_class,
+                "confidence": float(confidence),
+                "probabilities": probabilities,
+                "blur_detected": False,
+                "blur_score": 0.0,
+                "used_full_image_fallback": True
             })
 
-            if display_class == 'with_mask':
+            if display_class == "with_mask":
                 color = (0, 180, 0)
-            elif display_class == 'without_mask':
+            elif display_class == "without_mask":
                 color = (220, 40, 40)
             else:
                 color = (255, 165, 0)
@@ -227,19 +229,19 @@ class BasicInference:
             display_class = self.format_prediction_label(predicted_class, confidence, threshold=55.0)
 
             results.append({
-                'bbox': (x, y, w, h),
-                'class': display_class,
-                'raw_class': predicted_class,
-                'confidence': float(confidence),
-                'probabilities': probabilities,
-                'blur_detected': is_blur,
-                'blur_score': float(blur_score),
-                'used_full_image_fallback': False
+                "bbox": (x, y, w, h),
+                "class": display_class,
+                "raw_class": predicted_class,
+                "confidence": float(confidence),
+                "probabilities": probabilities,
+                "blur_detected": is_blur,
+                "blur_score": float(blur_score),
+                "used_full_image_fallback": False
             })
 
-            if display_class == 'with_mask':
+            if display_class == "with_mask":
                 color = (0, 180, 0)
-            elif display_class == 'without_mask':
+            elif display_class == "without_mask":
                 color = (220, 40, 40)
             else:
                 color = (255, 165, 0)
@@ -262,7 +264,7 @@ class BasicInference:
 
         return annotated, results
 
-    def evaluate_on_test_set(self, test_loader, save_dir='results'):
+    def evaluate_on_test_set(self, test_loader, save_dir="results"):
         self.model.eval()
         all_preds, all_labels = [], []
 
@@ -275,9 +277,9 @@ class BasicInference:
                 all_labels.extend(labels.numpy())
 
         accuracy = accuracy_score(all_labels, all_preds)
-        precision = precision_score(all_labels, all_preds, average='weighted')
-        recall = recall_score(all_labels, all_preds, average='weighted')
-        f1 = f1_score(all_labels, all_preds, average='weighted')
+        precision = precision_score(all_labels, all_preds, average="weighted")
+        recall = recall_score(all_labels, all_preds, average="weighted")
+        f1 = f1_score(all_labels, all_preds, average="weighted")
 
         print("\nTest Set Evaluation")
         print(f"Accuracy : {accuracy * 100:.2f}%")
@@ -301,11 +303,11 @@ class BasicInference:
         cm = confusion_matrix(all_labels, all_preds)
 
         fig, ax = plt.subplots(figsize=(7, 6))
-        im = ax.imshow(cm, cmap='Blues')
+        im = ax.imshow(cm, cmap="Blues")
 
-        ax.set_title('Confusion Matrix')
-        ax.set_xlabel('Predicted Label')
-        ax.set_ylabel('True Label')
+        ax.set_title("Confusion Matrix")
+        ax.set_xlabel("Predicted Label")
+        ax.set_ylabel("True Label")
         ax.set_xticks(np.arange(len(self.classes)))
         ax.set_yticks(np.arange(len(self.classes)))
         ax.set_xticklabels(self.classes)
@@ -313,12 +315,12 @@ class BasicInference:
 
         for i in range(cm.shape[0]):
             for j in range(cm.shape[1]):
-                ax.text(j, i, str(cm[i, j]), ha='center', va='center', color='black')
+                ax.text(j, i, str(cm[i, j]), ha="center", va="center", color="black")
 
         fig.colorbar(im)
         plt.tight_layout()
-        plt.savefig(os.path.join(save_dir, 'confusion_matrix.png'), dpi=150, bbox_inches='tight')
-        plt.show()
+        plt.savefig(os.path.join(save_dir, "confusion_matrix.png"), dpi=150, bbox_inches="tight")
+        plt.close(fig)
         print("Confusion matrix saved.")
 
         return all_preds, all_labels
