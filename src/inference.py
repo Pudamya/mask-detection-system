@@ -210,14 +210,25 @@ class BasicInference:
 
         # Confusion matrix
         cm = confusion_matrix(all_labels, all_preds)
-        plt.figure(figsize=(7, 6))
-        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                    xticklabels=self.classes, yticklabels=self.classes)
-        plt.title('Confusion Matrix')
-        plt.ylabel('True Label')
-        plt.xlabel('Predicted Label')
+
+        fig, ax = plt.subplots(figsize=(7, 6))
+        im = ax.imshow(cm, cmap='Blues')
+
+        ax.set_title('Confusion Matrix')
+        ax.set_xlabel('Predicted Label')
+        ax.set_ylabel('True Label')
+        ax.set_xticks(np.arange(len(self.classes)))
+        ax.set_yticks(np.arange(len(self.classes)))
+        ax.set_xticklabels(self.classes)
+        ax.set_yticklabels(self.classes)
+
+        for i in range(cm.shape[0]):
+            for j in range(cm.shape[1]):
+                ax.text(j, i, str(cm[i, j]), ha='center', va='center', color='black')
+
+        fig.colorbar(im)
         plt.tight_layout()
-        plt.savefig(os.path.join(save_dir, 'confusion_matrix.png'), dpi=150)
+        plt.savefig(os.path.join(save_dir, 'confusion_matrix.png'), dpi=150, bbox_inches='tight')
         plt.show()
         print("Confusion matrix saved.")
 
