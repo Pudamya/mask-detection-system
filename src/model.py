@@ -68,6 +68,7 @@ class ModelDevelopment(nn.Module):
         x = self.block2(x)
         x = self.block3(x)
         x = self.block4(x)
+        x = self.attention(x)
         x = self.classifier(x)
         return x
 
