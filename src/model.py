@@ -75,7 +75,9 @@ class ModelDevelopment(nn.Module):
     def get_architecture_summary(self):
         total_params = sum(p.numel() for p in self.parameters())
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
+
         return {
+            'model_name': 'CustomAttentionCNN',
             'total_params': total_params,
             'trainable_params': trainable_params,
             'architecture': str(self)
