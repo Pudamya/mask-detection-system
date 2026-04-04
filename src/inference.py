@@ -73,6 +73,14 @@ class BasicInference:
             minSize=(45, 45),
             flags=cv2.CASCADE_SCALE_IMAGE
         )
+        if len(faces) == 0:
+            faces = self.face_cascade.detectMultiScale(
+                gray,
+                scaleFactor=1.03,
+                minNeighbors=4,
+                minSize=(35, 35),
+                flags=cv2.CASCADE_SCALE_IMAGE
+            )
         if len(faces) > 0:
             faces = self._apply_nms(faces, overlap_threshold=0.3)
 
