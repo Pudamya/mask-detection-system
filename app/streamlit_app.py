@@ -180,14 +180,14 @@ with tab1:
 
         with col1:
             st.subheader("Uploaded Image")
-            st.image(temp_path, use_column_width=True)
+            st.image(temp_path, width="stretch")
 
         with col2:
             st.subheader("Detection Result")
             with st.spinner("Detecting faces and classifying..."):
                 try:
                     annotated, results = inferencer.detect_images(temp_path)
-                    st.image(annotated, use_column_width=True)
+                    st.image(annotated, width="stretch")
                 except Exception as e:
                     st.error(f"Error during detection: {e}")
                     results = []
@@ -287,13 +287,13 @@ with tab2:
 
     with c1:
         if os.path.exists(train_curve_path):
-            st.image(train_curve_path, caption="Training Curves", use_container_width=True)
+            st.image(train_curve_path, caption="Training Curves", width="stretch")
         else:
             st.info("Training curves image not found yet.")
 
     with c2:
         if os.path.exists(confusion_path):
-            st.image(confusion_path, caption="Confusion Matrix", use_container_width=True)
+            st.image(confusion_path, caption="Confusion Matrix", width="stretch")
         else:
             st.info("Confusion matrix image not found yet.")            
 
