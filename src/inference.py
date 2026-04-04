@@ -123,6 +123,8 @@ class BasicInference:
         # Non-Maximum Suppression - removes duplicate overlapping face boxes.
         boxes = []
         for (x, y, w, h) in faces:
+            if self.is_too_small(w, h, min_size=60):
+                continue
             boxes.append([x, y, x + w, y + h])
         boxes = np.array(boxes, dtype=np.float32)
 
