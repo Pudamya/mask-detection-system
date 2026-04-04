@@ -44,12 +44,24 @@ class BasicInference:
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        # Detect faces
-        # scaleFactor: how much image size is reduced per scale
-        # minNeighbors: how many neighbors a rectangle must retain
+        # Equalize histogram — improves detection in bright/dark images
+        gray = cv2.equalizeHist(gray)
+
+        # Detect faces with stricter parameters to avoid duplicates
         faces = self.face_cascade.detectMultiScale(
-            gray, scaleFactor=1.1, minNeighbors=5, minSize=(60, 60)
+            gray,
+            scaleFactor=1.05,    # smaller step = more thorough but slower
+            minNeighbors=8,       # higher = fewer false positives / duplicates
+            minSize=(80, 80),     # ignore tiny detections
+            flags=cv2.CASCADE_SCALE_IMAGE
         )
+
+        # ── Non-Maximum Suppression ──────────────────────────────────
+        # CONCEPT: Even with strict params, sometimes overlapping boxes
+        # appear for the same face. NMS keeps only the best box when
+        # two boxes overlap more than the threshold (50% overlap here).
+        if len(faces) > 0:
+            faces = self._apply_nms(faces, overlap_threshold=0.3)
 
         results = []
         annotated = image_rgb.copy()
@@ -59,11 +71,16 @@ class BasicInference:
             return annotated, results
 
         for (x, y, w, h) in faces:
-            # Crop face region
-            face_img = image_rgb[y:y+h, x:x+w]
+            # Add small padding around face for better classification
+            pad = int(0.1 * w)
+            x1 = max(0, x - pad)
+            y1 = max(0, y - pad)
+            x2 = min(image_rgb.shape[1], x + w + pad)
+            y2 = min(image_rgb.shape[0], y + h + pad)
+
+            face_img = image_rgb[y1:y2, x1:x2]
             pil_face = Image.fromarray(face_img)
 
-            # Preprocess + classify
             tensor = self.transform(pil_face).unsqueeze(0).to(self.device)
             predicted_class, confidence, probabilities = self.classify_face(tensor)
 
@@ -74,14 +91,59 @@ class BasicInference:
                 'probabilities': probabilities
             })
 
-            # Draw bounding box: green = mask, red = no mask
+            # Green = mask, Red = no mask
             color = (0, 200, 0) if predicted_class == 'with_mask' else (200, 0, 0)
             label = f"{predicted_class} ({confidence:.1f}%)"
-            cv2.rectangle(annotated, (x, y), (x+w, y+h), color, 2)
-            cv2.putText(annotated, label, (x, y - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+
+            # Draw filled rectangle behind text for readability
+            cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2)
+            cv2.rectangle(annotated, (x, y - th - 10), (x + tw + 4, y), color, -1)
+            cv2.putText(annotated, label, (x + 2, y - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
 
         return annotated, results
+
+
+    def _apply_nms(self, faces, overlap_threshold=0.3):
+        # Non-Maximum Suppression - removes duplicate overlapping face boxes.
+        boxes = []
+        for (x, y, w, h) in faces:
+            boxes.append([x, y, x + w, y + h])
+        boxes = np.array(boxes, dtype=np.float32)
+
+        x1, y1, x2, y2 = boxes[:,0], boxes[:,1], boxes[:,2], boxes[:,3]
+        areas = (x2 - x1) * (y2 - y1)
+        order = areas.argsort()[::-1]  # process largest boxes first
+
+        keep = []
+        while order.size > 0:
+            i = order[0]
+            keep.append(i)
+
+            # Compute intersection with all remaining boxes
+            ix1 = np.maximum(x1[i], x1[order[1:]])
+            iy1 = np.maximum(y1[i], y1[order[1:]])
+            ix2 = np.minimum(x2[i], x2[order[1:]])
+            iy2 = np.minimum(y2[i], y2[order[1:]])
+
+            inter_w = np.maximum(0, ix2 - ix1)
+            inter_h = np.maximum(0, iy2 - iy1)
+            inter   = inter_w * inter_h
+
+            iou = inter / (areas[i] + areas[order[1:]] - inter)
+
+            # Keep boxes with low overlap only
+            inds = np.where(iou <= overlap_threshold)[0]
+            order = order[inds + 1]
+
+        # Convert back to (x, y, w, h)
+        result = []
+        for i in keep:
+            b = boxes[i]
+            result.append((int(b[0]), int(b[1]),
+                        int(b[2] - b[0]), int(b[3] - b[1])))
+        return result
 
     # Run a single face tensor through the model and return prediction.
     def classify_face(self, tensor):
