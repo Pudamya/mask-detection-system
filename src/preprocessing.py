@@ -55,7 +55,6 @@ class BasicPreprocessing:
         total = len(labels)
 
         print("\nDataset Summary")
-        print("-" * 40)
         for idx, class_name in enumerate(self.classes):
             count = class_counts.get(idx, 0)
             percentage = (count / total) * 100 if total > 0 else 0
