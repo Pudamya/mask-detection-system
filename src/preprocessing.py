@@ -47,8 +47,8 @@ class BasicPreprocessing:
                     labels.append(label_idx)
 
         print(f"Total images found: {len(image_paths)}")
-        print(f"  With mask:    {labels.count(0)}")
-        print(f"  Without mask: {labels.count(1)}")
+        self.summarize_dataset(labels)
+        return image_paths, labels
 
         return image_paths, labels
 
@@ -136,6 +136,18 @@ class BasicPreprocessing:
         plt.savefig('results/sample_images.png')
         plt.show()
         print("Sample images saved to results/sample_images.png")
+
+    def summarize_dataset(self, labels):
+        class_counts = Counter(labels)
+        total = len(labels)
+
+        print("\nDataset Summary")
+        print("-" * 40)
+        for idx, class_name in enumerate(self.classes):
+            count = class_counts.get(idx, 0)
+            percentage = (count / total) * 100 if total > 0 else 0
+            print(f"{class_name:15s}: {count:4d} images ({percentage:.2f}%)")
+        print(f"{'total':15s}: {total:4d} images")    
 
 
 class MaskDataset(Dataset):
