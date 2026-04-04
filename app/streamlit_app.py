@@ -114,9 +114,54 @@ with st.sidebar:
     st.markdown("*IWMI Data Science Assessment*")
 
 # Main Title 
-st.title("Face Mask Detector")
-st.markdown("Upload a photo to detect whether people are wearing face masks.")
-st.markdown("---")
+st.markdown("""
+<div class="hero-card">
+    <h1 style="margin-bottom:0.4rem;">Face Mask Detection System</h1>
+    <p style="margin-bottom:0.2rem;">
+        Custom PyTorch CNN for static image face-mask classification with face detection,
+        confidence scoring, and interactive visual analysis.
+    </p>
+    <p style="opacity:0.75; margin-top:0.5rem;">
+        Built as an IWMI Data Science Intern assessment submission.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+metric_col1, metric_col2, metric_col3, metric_col4 = st.columns(4)
+
+with metric_col1:
+    st.markdown("""
+    <div class="metric-card">
+        <div class="small-label">Model Type</div>
+        <div class="big-value">Custom CNN</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with metric_col2:
+    st.markdown("""
+    <div class="metric-card">
+        <div class="small-label">Input Size</div>
+        <div class="big-value">128 x 128</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with metric_col3:
+    st.markdown("""
+    <div class="metric-card">
+        <div class="small-label">Classes</div>
+        <div class="big-value">2</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+with metric_col4:
+    st.markdown("""
+    <div class="metric-card">
+        <div class="small-label">Inference Mode</div>
+        <div class="big-value">Static Image</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+st.markdown("")
 
 # File Upload 
 uploaded_file = st.file_uploader(
