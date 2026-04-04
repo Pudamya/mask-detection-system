@@ -53,26 +53,26 @@ class BasicPreprocessing:
         return image_paths, labels
 
     def split_dataset(self, image_paths, labels):
-        # First split: train vs (val + test)
         X_train, X_temp, y_train, y_temp = train_test_split(
-            image_paths, labels,
-            test_size=0.3,
-            random_state=42,
+            image_paths,
+            labels,
+            test_size=0.30,
+            random_state=self.seed,
             stratify=labels
         )
 
-        # Second split: val vs test
         X_val, X_test, y_val, y_test = train_test_split(
-            X_temp, y_temp,
-            test_size=0.5,
-            random_state=42,
+            X_temp,
+            y_temp,
+            test_size=0.50,
+            random_state=self.seed,
             stratify=y_temp
         )
 
-        print(f"\nDataset Split:")
-        print(f"  Train:      {len(X_train)} images")
-        print(f"  Validation: {len(X_val)} images")
-        print(f"  Test:       {len(X_test)} images")
+        print("\nDataset Split")
+        print(f"Train      : {len(X_train)}")
+        print(f"Validation : {len(X_val)}")
+        print(f"Test       : {len(X_test)}")
 
         return X_train, X_val, X_test, y_train, y_val, y_test
 
