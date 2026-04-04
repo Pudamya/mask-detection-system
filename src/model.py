@@ -90,7 +90,7 @@ class ModelTrainer:
         self.device = device
 
         # CrossEntropyLoss = Softmax + NLLLoss
-        self.criterion = nn.CrossEntropyLoss()
+        self.criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
 
         # Adam optimizer: adaptive learning rates per parameter
         self.optimizer = optim.Adam(model.parameters(), lr=learning_rate,
