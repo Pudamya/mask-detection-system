@@ -21,44 +21,74 @@ st.set_page_config(
 # Styling
 st.markdown("""
 <style>
-    .main {
-        padding-top: 1.2rem;
-    }
+body {
+    background: radial-gradient(circle at top, #0f172a, #020617);
+}
 
-    .hero-card {
-        padding: 1.4rem 1.6rem;
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 18px;
-        background: linear-gradient(135deg, rgba(20,24,35,0.95), rgba(10,14,24,0.95));
-        margin-bottom: 1rem;
-    }
+.main {
+    padding-top: 1.2rem;
+}
 
-    .metric-card {
-        padding: 1rem 1.2rem;
-        border-radius: 16px;
-        background: rgba(255,255,255,0.04);
-        border: 1px solid rgba(255,255,255,0.06);
-        text-align: center;
-    }
+.hero-card {
+    padding: 1.6rem;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 1rem;
+}
 
-    .section-card {
-        padding: 1rem 1.2rem;
-        border-radius: 16px;
-        background: rgba(255,255,255,0.03);
-        border: 1px solid rgba(255,255,255,0.06);
-        margin-bottom: 1rem;
-    }
+.metric-card {
+    padding: 1rem;
+    border-radius: 16px;
+    background: linear-gradient(145deg, rgba(30,41,59,0.7), rgba(15,23,42,0.7));
+    border: 1px solid rgba(255,255,255,0.05);
+    text-align: center;
+    transition: 0.3s ease;
+}
 
-    .small-label {
-        font-size: 0.9rem;
-        opacity: 0.75;
-        margin-bottom: 0.2rem;
-    }
+.metric-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+}
 
-    .big-value {
-        font-size: 1.4rem;
-        font-weight: 700;
-    }
+.section-card {
+    padding: 1rem;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    margin-bottom: 1rem;
+}
+
+.success-box {
+    background: rgba(34,197,94,0.15);
+    border-left: 4px solid #22c55e;
+    padding: 0.8rem;
+    border-radius: 8px;
+}
+
+.error-box {
+    background: rgba(239,68,68,0.15);
+    border-left: 4px solid #ef4444;
+    padding: 0.8rem;
+    border-radius: 8px;
+}
+
+.small-label {
+    font-size: 0.9rem;
+    opacity: 0.75;
+    margin-bottom: 0.2rem;
+}
+
+.big-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+img:hover {
+    transform: scale(1.02);
+    transition: 0.3s ease;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -139,6 +169,22 @@ with st.sidebar:
     - SE attention block
     - Global average pooling head
     """)
+
+    st.markdown("---")
+    st.markdown("### Model Info")
+    st.markdown("""
+    - Custom CNN
+    - Input: 128×128
+    - Classes: 2
+    """)
+
+    st.markdown("### Performance")
+    if metrics:
+        st.markdown(f"- Accuracy: {metrics.get('accuracy', 0.0) * 100:.2f}%")
+        st.markdown(f"- F1 Score: {metrics.get('f1_weighted', 0.0):.4f}")
+    else:
+        st.markdown("- Accuracy: Not available yet")
+        st.markdown("- F1 Score: Not available yet")
 
     st.markdown("---")
     st.markdown("**Training Setup**")
@@ -237,7 +283,16 @@ with tab1:
 
                     used_fallback = any(r.get('used_full_image_fallback', False) for r in results)
                     if used_fallback:
-                        st.info("No reliable face box was detected, so the system used full-image classification as a fallback.")
+                        st.markdown("""
+                        <div style="
+                        background:rgba(234,179,8,0.15);
+                        border-left:4px solid #eab308;
+                        padding:10px;
+                        border-radius:8px;
+                        ">
+                        Fallback Mode: Face detection uncertain, used full image classification.
+                        </div>
+                        """, unsafe_allow_html=True)
 
                 except Exception as e:
                     st.error(f"Error during detection: {e}")
@@ -259,11 +314,26 @@ with tab1:
 
                 with st.container():
                     if predicted_label == 'with_mask':
-                        st.success(f"Face {i+1}: **WITH MASK** - Confidence: `{confidence:.1f}%`")
+                        color = "#22c55e"
                     elif predicted_label == 'without_mask':
-                        st.error(f"Face {i+1}: **WITHOUT MASK** - Confidence: `{confidence:.1f}%`")
+                        color = "#ef4444"
                     else:
-                        st.warning(f"Face {i+1}: **UNCERTAIN** - Confidence: `{confidence:.1f}%`")
+                        color = "#eab308"
+
+                    st.markdown(f"""
+                    <div style="
+                    padding:10px;
+                    border-radius:10px;
+                    background:rgba(255,255,255,0.03);
+                    border:1px solid rgba(255,255,255,0.08);
+                    margin-bottom:10px;
+                    ">
+                    <strong style="color:{color}; font-size:16px;">
+                    {predicted_label.replace('_', ' ').upper()}
+                    </strong><br>
+                    Confidence: {confidence:.1f}%
+                    </div>
+                    """, unsafe_allow_html=True)
 
                     st.markdown(f"""
                     <div class="section-card">
@@ -276,6 +346,13 @@ with tab1:
                     </div>
                     """, unsafe_allow_html=True)
 
+                    if predicted_label == "without_mask":
+                        st.caption("System Insight: High confidence detection of uncovered face.")
+                    elif predicted_label == "with_mask":
+                        st.caption("System Insight: Mask detected with strong probability.")
+                    else:
+                        st.caption("System Insight: Prediction confidence is moderate, so the system marked this as uncertain.")
+
                     if probabilities is None:
                         probs = np.array([0.5, 0.5], dtype=float)
                     else:
@@ -287,13 +364,13 @@ with tab1:
                     fig.patch.set_facecolor('#0e1117')
                     ax.set_facecolor('#0e1117')
 
-                    bar_colors = ['#2ecc71', '#e74c3c', '#f1c40f']
+                    bar_colors = ["#22c55e", "#ef4444", "#eab308"]
 
                     bars = ax.barh(
                         top3_labels,
                         top3_values,
                         color=bar_colors[:len(top3_labels)],
-                        height=0.5,
+                        height=0.4,
                         edgecolor='none'
                     )
 
@@ -363,7 +440,6 @@ with tab1:
 with tab2:
     st.subheader("Training and Evaluation Artifacts")
 
-    metrics_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'metrics.json')
     train_curve_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'training_curves.png')
     confusion_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'confusion_matrix.png')
 
