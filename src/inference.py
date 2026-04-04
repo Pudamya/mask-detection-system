@@ -4,10 +4,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 from torchvision import transforms
-from sklearn.metrics import (classification_report, confusion_matrix,
-                              accuracy_score, f1_score)
-import seaborn as sns
 import os
+from sklearn.metrics import (
+    classification_report,
+    confusion_matrix,
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score
+)
 
 # Handles face detection + mask classification on static images and evaluates the model on the test set.
 class BasicInference:
