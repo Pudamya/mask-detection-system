@@ -103,6 +103,7 @@ class ModelTrainer:
         self.history = {'train_loss': [], 'val_loss': [],
                         'train_acc': [],  'val_acc': []}
         self.best_val_loss = float('inf')
+        self.best_val_acc = 0.0
 
     def train_one_epoch(self, train_loader):
         self.model.train()  # Enable dropout & batch norm training mode
