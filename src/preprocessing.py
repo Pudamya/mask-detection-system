@@ -21,11 +21,16 @@ def set_seed(seed=42):
 
 # Handles all data loading, splitting, and transformation.
 class BasicPreprocessing:
-    def __init__(self, data_dir='data', img_size=128, batch_size=32):
+    def __init__(self, data_dir='data', img_size=128, batch_size=32, seed=42):
         self.data_dir = data_dir
         self.img_size = img_size
         self.batch_size = batch_size
+        self.seed = seed
         self.classes = ['with_mask', 'without_mask']
+        self.results_dir = 'results'
+
+        os.makedirs(self.results_dir, exist_ok=True)
+        set_seed(self.seed)
 
     def import_dataset(self):
         image_paths = []
