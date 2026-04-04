@@ -17,11 +17,6 @@ from sklearn.metrics import (
 
 
 class BasicInference:
-    """
-    Two-stage pipeline:
-    Stage 1 — Face Detection: Haar Cascade finds WHERE faces are in image
-    Stage 2 — Classification: Our CNN decides mask/no-mask for each face
-    """
 
     def __init__(self, model, device, img_size=128, classes=None):
         self.model = model
@@ -171,43 +166,8 @@ class BasicInference:
         results = []
         annotated = image_rgb.copy()
 
+        # No face found -> do NOT classify random images
         if len(faces) == 0:
-            h_img, w_img = image_rgb.shape[:2]
-
-            pil_img = Image.fromarray(image_rgb)
-            predicted_class, confidence, probabilities = self.classify_face(pil_img)
-            display_class = self.format_prediction_label(predicted_class, confidence, threshold=55.0)
-
-            results.append({
-                "bbox": (0, 0, w_img, h_img),
-                "class": display_class,
-                "raw_class": predicted_class,
-                "confidence": float(confidence),
-                "probabilities": probabilities,
-                "blur_detected": False,
-                "blur_score": 0.0,
-                "used_full_image_fallback": True
-            })
-
-            if display_class == "with_mask":
-                color = (0, 180, 0)
-            elif display_class == "without_mask":
-                color = (220, 40, 40)
-            else:
-                color = (255, 165, 0)
-
-            label = f"{display_class} ({confidence:.1f}%)"
-            cv2.rectangle(annotated, (10, 10), (w_img - 10, h_img - 10), color, 3)
-            cv2.putText(
-                annotated,
-                label,
-                (20, 40),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.8,
-                (255, 255, 255),
-                2
-            )
-
             return annotated, results
 
         for (x, y, w, h) in faces:
@@ -216,6 +176,7 @@ class BasicInference:
 
             pad_w = int(0.18 * w)
             pad_h = int(0.18 * h)
+
             x1 = max(0, x - pad_w)
             y1 = max(0, y - pad_h)
             x2 = min(image_rgb.shape[1], x + w + pad_w)
@@ -229,19 +190,19 @@ class BasicInference:
             display_class = self.format_prediction_label(predicted_class, confidence, threshold=55.0)
 
             results.append({
-                "bbox": (x, y, w, h),
-                "class": display_class,
-                "raw_class": predicted_class,
-                "confidence": float(confidence),
-                "probabilities": probabilities,
-                "blur_detected": is_blur,
-                "blur_score": float(blur_score),
-                "used_full_image_fallback": False
+                'bbox': (x, y, w, h),
+                'class': display_class,
+                'raw_class': predicted_class,
+                'confidence': float(confidence),
+                'probabilities': probabilities,
+                'blur_detected': is_blur,
+                'blur_score': float(blur_score),
+                'used_full_image_fallback': False
             })
 
-            if display_class == "with_mask":
+            if display_class == 'with_mask':
                 color = (0, 180, 0)
-            elif display_class == "without_mask":
+            elif display_class == 'without_mask':
                 color = (220, 40, 40)
             else:
                 color = (255, 165, 0)
