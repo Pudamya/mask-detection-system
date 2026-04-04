@@ -11,9 +11,10 @@ from inference import BasicInference
 
 #Config
 st.set_page_config(
-    page_title="Face Mask Detector | IWMI",
-    page_icon="😷",
-    layout="wide"
+    page_title="Face Mask Detection System | IWMI Assessment",
+    page_icon="FM",
+    layout="wide",
+    initial_sidebar_state="expanded"
 )
 
 # Load Model 
