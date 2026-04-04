@@ -201,9 +201,21 @@ with tab1:
                 with st.container():
                     # Status badge
                     if r['class'] == 'with_mask':
-                        st.success(f"Face {i+1}: **WITH MASK** — Confidence: `{r['confidence']:.1f}%`")
+                        st.success(f"Face {i+1}: **WITH MASK** - Confidence: `{r['confidence']:.1f}%`")
                     else:
-                        st.error(f"Face {i+1}: **WITHOUT MASK** — Confidence: `{r['confidence']:.1f}%`")
+                        st.error(f"Face {i+1}: **WITHOUT MASK** - Confidence: `{r['confidence']:.1f}%`")
+                    blur_text = "Yes" if r.get('blur_detected', False) else "No"
+                    raw_class = r.get('raw_class', r['class'])
+
+                    st.markdown(f"""
+                    <div class="section-card">
+                        <strong>Raw Prediction:</strong> {raw_class}<br>
+                        <strong>Displayed Label:</strong> {r['class']}<br>
+                        <strong>Confidence:</strong> {r['confidence']:.2f}%<br>
+                        <strong>Blur Detected:</strong> {blur_text}<br>
+                        <strong>Blur Score:</strong> {r.get('blur_score', 0.0):.2f}
+                    </div>
+                    """, unsafe_allow_html=True)    
 
                     # Clean bar chart
                     fig, ax = plt.subplots(figsize=(7, 2.2))
