@@ -98,11 +98,12 @@ class BasicInference:
 
             tensor = self.transform(pil_face).unsqueeze(0).to(self.device)
             predicted_class, confidence, probabilities = self.classify_face(tensor)
+            display_class = self.format_prediction_label(predicted_class, confidence, threshold=60.0)
 
             results.append({
                 'bbox': (x, y, w, h),
-                'class': predicted_class,
-                'confidence': confidence,
+                'class': display_class,
+                'raw_class': predicted_class,
                 'probabilities': probabilities,
                 'blur_detected': is_blur,
                 'blur_score': float(blur_score)
