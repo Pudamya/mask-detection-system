@@ -47,56 +47,21 @@ class ModelDevelopment(nn.Module):
     def __init__(self, num_classes=2, dropout_rate=0.4):
         super(ModelDevelopment, self).__init__()
 
-        # After MaxPool(2,2): 128 → 64
-        self.block1 = nn.Sequential(
-            nn.Conv2d(3, 32, kernel_size=3, padding=1),  
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, 2),                           
-            nn.Dropout2d(0.1)
-        )
+        self.block1 = ConvBlock(3, 32, dropout=0.10)
+        self.block2 = ConvBlock(32, 64, dropout=0.15)
+        self.block3 = ConvBlock(64, 128, dropout=0.20)
+        self.block4 = ConvBlock(128, 256, dropout=0.25)
 
-        # After MaxPool: 64 → 32
-        self.block2 = nn.Sequential(
-            nn.Conv2d(32, 64, kernel_size=3, padding=1), 
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, 2),                           
-            nn.Dropout2d(0.2)
-        )
+        self.attention = SEBlock(256)
 
-        # After MaxPool: 32 → 16
-        self.block3 = nn.Sequential(
-            nn.Conv2d(64, 128, kernel_size=3, padding=1), 
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, 2),                            
-            nn.Dropout2d(0.3)
-        )
-
-        # After MaxPool: 16 → 8
-        self.block4 = nn.Sequential(
-            nn.Conv2d(128, 256, kernel_size=3, padding=1), 
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2, 2),                             
-            nn.Dropout2d(0.3)
-        )
-
-        # CLASSIFIER HEAD 
-        # Flatten: 256 * 8 * 8 = 16384 features
-        # FC layers reduce this to num_classes (2) for final prediction
         self.classifier = nn.Sequential(
+            nn.AdaptiveAvgPool2d(1),
             nn.Flatten(),
-            nn.Linear(256 * 8 * 8, 512),
-            nn.BatchNorm1d(512),
+            nn.Linear(256, 128),
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
-            nn.Linear(512, 128),
-            nn.ReLU(inplace=True),
-            nn.Dropout(dropout_rate / 2),
-            nn.Linear(128, num_classes)  
-        )
+            nn.Linear(128, num_classes)
+    )
 
     def forward(self, x):
         x = self.block1(x)
