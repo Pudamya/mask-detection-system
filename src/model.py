@@ -7,6 +7,23 @@ import numpy as np
 from tqdm import tqdm
 import os
 
+class ConvBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, dropout=0.0):
+        super().__init__()
+        self.block = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(2),
+            nn.Dropout2d(dropout)
+        )
+
+    def forward(self, x):
+        return self.block(x)
+
 # Custom CNN architecture for mask classification
 class ModelDevelopment(nn.Module):
     def __init__(self, num_classes=2, dropout_rate=0.4):
