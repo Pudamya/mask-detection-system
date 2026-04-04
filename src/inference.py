@@ -27,6 +27,9 @@ class BasicInference:
         cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         self.face_cascade = cv2.CascadeClassifier(cascade_path)
 
+        eye_cascade_path = cv2.data.haarcascades + "haarcascade_eye.xml"
+        self.eye_cascade = cv2.CascadeClassifier(eye_cascade_path)
+
         self.transform = transforms.Compose([
             transforms.Resize((img_size, img_size)),
             transforms.ToTensor(),
@@ -88,6 +91,22 @@ class BasicInference:
         confidence = float(mean_probs[predicted_idx] * 100)
 
         return predicted_class, confidence, mean_probs
+
+    def has_closeup_face_pattern(self, image_rgb):
+        gray = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2GRAY)
+        gray = cv2.equalizeHist(gray)
+
+        h, w = gray.shape
+        upper_half = gray[: max(h // 2, 1), :]
+
+        eyes = self.eye_cascade.detectMultiScale(
+            upper_half,
+            scaleFactor=1.05,
+            minNeighbors=4,
+            minSize=(20, 20)
+        )
+
+        return len(eyes) >= 2
 
     def _apply_nms(self, faces, overlap_threshold=0.3):
         boxes = []
@@ -166,8 +185,47 @@ class BasicInference:
         results = []
         annotated = image_rgb.copy()
 
-        # No face found -> do NOT classify random images
+        # No face box found: allow close-up face fallback only if eye pattern exists
         if len(faces) == 0:
+            if not self.has_closeup_face_pattern(image_rgb):
+                return annotated, results
+
+            h_img, w_img = image_rgb.shape[:2]
+            pil_img = Image.fromarray(image_rgb)
+
+            predicted_class, confidence, probabilities = self.classify_face_tta(pil_img)
+            display_class = self.format_prediction_label(predicted_class, confidence, threshold=55.0)
+
+            results.append({
+                "bbox": (0, 0, w_img, h_img),
+                "class": display_class,
+                "raw_class": predicted_class,
+                "confidence": float(confidence),
+                "probabilities": probabilities,
+                "blur_detected": False,
+                "blur_score": 0.0,
+                "used_full_image_fallback": True
+            })
+
+            if display_class == "with_mask":
+                color = (0, 180, 0)
+            elif display_class == "without_mask":
+                color = (220, 40, 40)
+            else:
+                color = (255, 165, 0)
+
+            label = f"{display_class} ({confidence:.1f}%)"
+            cv2.rectangle(annotated, (10, 10), (w_img - 10, h_img - 10), color, 3)
+            cv2.putText(
+                annotated,
+                label,
+                (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (255, 255, 255),
+                2
+            )
+
             return annotated, results
 
         for (x, y, w, h) in faces:
@@ -190,19 +248,19 @@ class BasicInference:
             display_class = self.format_prediction_label(predicted_class, confidence, threshold=55.0)
 
             results.append({
-                'bbox': (x, y, w, h),
-                'class': display_class,
-                'raw_class': predicted_class,
-                'confidence': float(confidence),
-                'probabilities': probabilities,
-                'blur_detected': is_blur,
-                'blur_score': float(blur_score),
-                'used_full_image_fallback': False
+                "bbox": (x, y, w, h),
+                "class": display_class,
+                "raw_class": predicted_class,
+                "confidence": float(confidence),
+                "probabilities": probabilities,
+                "blur_detected": is_blur,
+                "blur_score": float(blur_score),
+                "used_full_image_fallback": False
             })
 
-            if display_class == 'with_mask':
+            if display_class == "with_mask":
                 color = (0, 180, 0)
-            elif display_class == 'without_mask':
+            elif display_class == "without_mask":
                 color = (220, 40, 40)
             else:
                 color = (255, 165, 0)
