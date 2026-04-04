@@ -5,95 +5,177 @@ import numpy as np
 from PIL import Image
 import sys, os
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from model import ModelDevelopment
 from inference import BasicInference
 
-st.set_page_config(page_title="Face Mask Detector | IWMI",
-                   page_icon="😷", layout="wide")
+#Config
+st.set_page_config(
+    page_title="Face Mask Detector | IWMI",
+    page_icon="😷",
+    layout="wide"
+)
 
 # Load Model 
 @st.cache_resource
 def load_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model  = ModelDevelopment(num_classes=2)
-    model.load_state_dict(torch.load('models/best_model.pth',
-                                      map_location=device))
-    model.to(device)   # ← ADD THIS LINE — moves model weights to GPU
+    model.load_state_dict(torch.load(
+        os.path.join(os.path.dirname(__file__), '..', 'models', 'best_model.pth'),
+        map_location=device
+    ))
+    model.to(device)
     model.eval()
-    inferencer = BasicInference(model, device, img_size=128,
-                                classes=['with_mask', 'without_mask'])
+    inferencer = BasicInference(
+        model, device, img_size=128,
+        classes=['with_mask', 'without_mask']
+    )
     return inferencer, device
 
-# Sidebar 
+# Sidebar
 with st.sidebar:
+    st.image("https://www.iwmi.cgiar.org/wp-content/uploads/2020/09/IWMI-logo.png", width=180)
     st.title("Model Info")
+
     st.markdown("**Architecture:** Custom CNN")
     st.markdown("**Framework:** PyTorch")
-    st.markdown("""
-    **Layers:**
-    - 4 × Conv Block (Conv → BN → ReLU → MaxPool → Dropout)
-    - 2 × Fully Connected
-    - Total parameters: ~2.1M
-    """)
     st.markdown("**Input Size:** 128 × 128 × 3")
-    st.markdown("**Classes:** with_mask, without_mask")
+    st.markdown("**Classes:** `with_mask` · `without_mask`")
+
     st.markdown("---")
-    st.markdown("**IWMI Data Science Assessment**")
+    st.markdown("**Network Layers:**")
+    st.markdown("""
+    - Conv Block 1 → 32 filters
+    - Conv Block 2 → 64 filters
+    - Conv Block 3 → 128 filters
+    - Conv Block 4 → 256 filters
+    - FC Layer → 512 units
+    - FC Layer → 128 units
+    - Output → 2 classes
+    """)
+    st.markdown("**Total Parameters:** ~8.8M")
+    st.markdown("**Optimizer:** Adam + ReduceLROnPlateau")
+    st.markdown("**Regularization:** BatchNorm + Dropout")
 
-# Main UI 
+    st.markdown("---")
+
+    # Show accuracy if results file exists
+    results_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'confusion_matrix.png')
+    if os.path.exists(results_path):
+        st.markdown("**Confusion Matrix:**")
+        st.image(results_path)
+
+    st.markdown("---")
+    st.markdown("*IWMI Data Science Assessment*")
+
+# Main Title 
 st.title("Face Mask Detector")
-st.markdown("Upload an image to detect whether people are wearing face masks.")
+st.markdown("Upload a photo to detect whether people are wearing face masks.")
+st.markdown("---")
 
-uploaded_file = st.file_uploader("Choose an image...",
-                                  type=['jpg', 'jpeg', 'png'])
+# File Upload 
+uploaded_file = st.file_uploader(
+    "Choose an image...",
+    type=['jpg', 'jpeg', 'png'],
+    help="Upload a clear frontal face image for best results"
+)
 
-if uploaded_file:
+if uploaded_file is not None:
     inferencer, device = load_model()
 
-    # Save temp file for OpenCV
+    # Save temp file
     temp_path = "temp_upload.jpg"
     with open(temp_path, "wb") as f:
-        f.write(uploaded_file.read())
+        f.write(uploaded_file.getvalue())
 
     col1, col2 = st.columns(2)
 
     with col1:
-        st.subheader("📷 Uploaded Image")
+        st.subheader("Uploaded Image")
         st.image(temp_path, use_column_width=True)
 
     with col2:
-        st.subheader("🔍 Detection Result")
+        st.subheader("Detection Result")
         with st.spinner("Detecting faces and classifying..."):
-            annotated, results = inferencer.detect_images(temp_path)
+            try:
+                annotated, results = inferencer.detect_images(temp_path)
+                st.image(annotated, use_column_width=True)
+            except Exception as e:
+                st.error(f"Error during detection: {e}")
+                results = []
 
-        if len(results) == 0:
-            st.warning("No faces detected in the image.")
-        else:
-            st.image(annotated, use_column_width=True)
-
-    # Results Table 
+    # Prediction Details
     if results:
         st.markdown("---")
         st.subheader("Prediction Details")
 
         for i, r in enumerate(results):
-            st.markdown(f"**Face {i+1}:** `{r['class']}` — "
-                        f"Confidence: `{r['confidence']:.1f}%`")
+            with st.container():
+                # Status badge
+                if r['class'] == 'with_mask':
+                    st.success(f"Face {i+1}: **WITH MASK** — Confidence: `{r['confidence']:.1f}%`")
+                else:
+                    st.error(f"Face {i+1}: **WITHOUT MASK** — Confidence: `{r['confidence']:.1f}%`")
 
-            # Bar chart of class probabilities
-            fig, ax = plt.subplots(figsize=(6, 2.5))
-            classes = ['with_mask', 'without_mask']
-            colors  = ['#2ecc71', '#e74c3c']
-            bars = ax.barh(classes, r['probabilities'] * 100, color=colors)
-            ax.set_xlim(0, 100)
-            ax.set_xlabel("Confidence (%)")
-            ax.set_title(f"Face {i+1} — Top Class Probabilities")
-            for bar, val in zip(bars, r['probabilities'] * 100):
-                ax.text(val + 1, bar.get_y() + bar.get_height()/2,
-                        f"{val:.1f}%", va='center')
-            st.pyplot(fig)
-            plt.close()
+                # Clean bar chart
+                fig, ax = plt.subplots(figsize=(7, 2.2))
+                fig.patch.set_facecolor('#0e1117')
+                ax.set_facecolor('#0e1117')
 
-    os.remove(temp_path)
+                classes     = ['With Mask', 'Without Mask']
+                probs       = r['probabilities'] * 100
+                bar_colors  = ['#2ecc71', '#e74c3c']
+
+                bars = ax.barh(classes, probs, color=bar_colors,
+                               height=0.5, edgecolor='none')
+
+                # Value labels on bars
+                for bar, val in zip(bars, probs):
+                    ax.text(
+                        min(val + 1.5, 95),
+                        bar.get_y() + bar.get_height() / 2,
+                        f"{val:.1f}%",
+                        va='center', ha='left',
+                        color='white', fontsize=11, fontweight='bold'
+                    )
+
+                ax.set_xlim(0, 100)
+                ax.set_xlabel("Confidence (%)", color='white')
+                ax.set_title(f"Face {i+1} — Class Probabilities",
+                             color='white', fontsize=12)
+                ax.tick_params(colors='white')
+                ax.spines['bottom'].set_color('#444')
+                ax.spines['left'].set_color('#444')
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                ax.xaxis.label.set_color('white')
+
+                plt.tight_layout()
+                st.pyplot(fig)
+                plt.close()
+
+    elif len(results) == 0 and uploaded_file is not None:
+        st.markdown("---")
+        st.warning("No faces were detected in this image. Try a clearer frontal face photo.")
+
+    # Cleanup temp file
+    if os.path.exists(temp_path):
+        os.remove(temp_path)
+
+else:
+    # Show placeholder when no image uploaded
+    st.info("Upload an image above to get started.")
+
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("#### How it works")
+        st.markdown("1. Upload a `.jpg` or `.png` image\n2. Haar Cascade detects faces\n3. CNN classifies each face\n4. Results shown with confidence")
+    with col2:
+        st.markdown("#### Best Results With")
+        st.markdown("- Clear frontal face photos\n- Good lighting\n- Face clearly visible\n- Single or multiple people")
+    with col3:
+        st.markdown("#### Limitations")
+        st.markdown("- Side profile faces may be missed\n- Very small faces may not detect\n- Heavy occlusion may confuse model")
