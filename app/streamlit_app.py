@@ -268,3 +268,24 @@ with tab1:
         with col3:
             st.markdown("#### Limitations")
             st.markdown("- Side profile faces may be missed\n- Very small faces may not detect\n- Heavy occlusion may confuse model")
+
+with tab2:
+    st.subheader("Training and Evaluation Artifacts")
+
+    train_curve_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'training_curves.png')
+    confusion_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'confusion_matrix.png')
+
+    c1, c2 = st.columns(2)
+
+    with c1:
+        if os.path.exists(train_curve_path):
+            st.image(train_curve_path, caption="Training Curves", use_container_width=True)
+        else:
+            st.info("Training curves image not found yet.")
+
+    with c2:
+        if os.path.exists(confusion_path):
+            st.image(confusion_path, caption="Confusion Matrix", use_container_width=True)
+        else:
+            st.info("Confusion matrix image not found yet.")            
+
