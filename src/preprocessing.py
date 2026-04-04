@@ -9,6 +9,15 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from PIL import Image
 from sklearn.model_selection import train_test_split
+import random
+from collections import Counter
+
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(seed)
 
 # Handles all data loading, splitting, and transformation.
 class BasicPreprocessing:
