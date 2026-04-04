@@ -60,18 +60,12 @@ body {
     margin-bottom: 1rem;
 }
 
-.success-box {
-    background: rgba(34,197,94,0.15);
-    border-left: 4px solid #22c55e;
-    padding: 0.8rem;
-    border-radius: 8px;
-}
-
-.error-box {
-    background: rgba(239,68,68,0.15);
-    border-left: 4px solid #ef4444;
-    padding: 0.8rem;
-    border-radius: 8px;
+.result-card {
+    padding: 1.2rem 1.3rem;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    margin-bottom: 0.8rem;
 }
 
 .small-label {
@@ -83,6 +77,15 @@ body {
 .big-value {
     font-size: 1.4rem;
     font-weight: 700;
+}
+
+.status-pill {
+    display: inline-block;
+    padding: 0.35rem 0.7rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 0.35rem;
 }
 
 img:hover {
@@ -137,16 +140,44 @@ def get_top3_display(probabilities):
     probs = np.array(probabilities, dtype=float)
     with_mask_score = float(probs[0] * 100)
     without_mask_score = float(probs[1] * 100)
-    uncertainty_score = float((100.0 - abs(with_mask_score - without_mask_score)) / 2.0)
+    certainty_level = float(max(with_mask_score, without_mask_score))
 
-    labels = ["With Mask", "Without Mask", "Uncertainty Score"]
-    values = [with_mask_score, without_mask_score, uncertainty_score]
+    labels = ["With Mask", "Without Mask", "Certainty Level"]
+    values = [with_mask_score, without_mask_score, certainty_level]
 
-    order = np.argsort(values)[::-1]
-    ordered_labels = [labels[i] for i in order]
-    ordered_values = [values[i] for i in order]
+    return labels, values
 
-    return ordered_labels, ordered_values
+
+def get_result_theme(predicted_label):
+    if predicted_label == "with_mask":
+        return {
+            "title": "Mask Detected",
+            "color": "#22c55e",
+            "bg": "rgba(34,197,94,0.12)",
+            "border": "rgba(34,197,94,0.35)",
+            "pill_bg": "rgba(34,197,94,0.18)",
+            "pill_text": "#86efac",
+            "insight": "The face appears to be covered with a mask."
+        }
+    if predicted_label == "without_mask":
+        return {
+            "title": "No Mask Detected",
+            "color": "#ef4444",
+            "bg": "rgba(239,68,68,0.12)",
+            "border": "rgba(239,68,68,0.35)",
+            "pill_bg": "rgba(239,68,68,0.18)",
+            "pill_text": "#fca5a5",
+            "insight": "The face appears to be visible without a mask."
+        }
+    return {
+        "title": "Uncertain Result",
+        "color": "#eab308",
+        "bg": "rgba(234,179,8,0.12)",
+        "border": "rgba(234,179,8,0.35)",
+        "pill_bg": "rgba(234,179,8,0.18)",
+        "pill_text": "#fde68a",
+        "insight": "The system detected a face-like region, but confidence is moderate."
+    }
 
 
 metrics = load_metrics()
@@ -200,7 +231,6 @@ with st.sidebar:
 
     st.markdown("---")
     st.caption("IWMI Data Science Intern Assessment")
-
 
 # Hero
 st.markdown("""
@@ -276,7 +306,7 @@ with tab1:
 
         with col2:
             st.subheader("Detection Result")
-            with st.spinner("Detecting faces and classifying..."):
+            with st.spinner("Analyzing image..."):
                 try:
                     annotated, results = inferencer.detect_images(temp_path)
                     st.image(annotated, width="stretch")
@@ -285,12 +315,13 @@ with tab1:
                     if used_fallback:
                         st.markdown("""
                         <div style="
-                        background:rgba(234,179,8,0.15);
-                        border-left:4px solid #eab308;
+                        background:rgba(59,130,246,0.14);
+                        border-left:4px solid #3b82f6;
                         padding:10px;
                         border-radius:8px;
+                        margin-top:8px;
                         ">
-                        Fallback Mode: Face detection uncertain, used full image classification.
+                        Adaptive image analysis mode was used for this prediction.
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -300,7 +331,7 @@ with tab1:
 
         if results:
             st.markdown("---")
-            st.subheader("Prediction Details")
+            st.subheader("Result Summary")
 
             for i, r in enumerate(results):
                 predicted_label = r.get('class', 'unknown')
@@ -310,97 +341,91 @@ with tab1:
                 blur_detected = r.get('blur_detected', False)
                 blur_score = float(r.get('blur_score', 0.0))
                 blur_text = "Yes" if blur_detected else "No"
-                source_mode = "Full-image fallback" if r.get("used_full_image_fallback", False) else "Detected face crop"
+                analysis_mode = "Adaptive image analysis" if r.get("used_full_image_fallback", False) else "Face crop analysis"
 
-                with st.container():
-                    if predicted_label == 'with_mask':
-                        color = "#22c55e"
-                    elif predicted_label == 'without_mask':
-                        color = "#ef4444"
-                    else:
-                        color = "#eab308"
+                theme = get_result_theme(predicted_label)
 
-                    st.markdown(f"""
-                    <div style="
-                    padding:10px;
-                    border-radius:10px;
-                    background:rgba(255,255,255,0.03);
-                    border:1px solid rgba(255,255,255,0.08);
-                    margin-bottom:10px;
-                    ">
-                    <strong style="color:{color}; font-size:16px;">
-                    {predicted_label.replace('_', ' ').upper()}
-                    </strong><br>
-                    Confidence: {confidence:.1f}%
+                st.markdown(f"""
+                <div class="result-card" style="
+                    background:{theme['bg']};
+                    border:1px solid {theme['border']};
+                ">
+                    <div style="font-size:1.35rem; font-weight:700; color:{theme['color']};">
+                        Face {i+1}: {theme['title']}
                     </div>
-                    """, unsafe_allow_html=True)
+                    <div style="margin-top:0.45rem; font-size:1rem;">
+                        Confidence: <strong>{confidence:.1f}%</strong>
+                    </div>
+                    <div class="status-pill" style="
+                        background:{theme['pill_bg']};
+                        color:{theme['pill_text']};
+                    ">
+                    </div>
+                    
+                </div>
+                """, unsafe_allow_html=True)
 
+                if probabilities is None:
+                    probs = np.array([0.5, 0.5], dtype=float)
+                else:
+                    probs = np.array(probabilities, dtype=float)
+
+                top3_labels, top3_values = get_top3_display(probs)
+
+                st.markdown("#### Confidence Analysis")
+                fig, ax = plt.subplots(figsize=(7, 2.7))
+                fig.patch.set_facecolor('#0e1117')
+                ax.set_facecolor('#0e1117')
+
+                bar_colors = ["#22c55e", "#ef4444", "#38bdf8"]
+
+                bars = ax.barh(
+                    top3_labels,
+                    top3_values,
+                    color=bar_colors,
+                    height=0.4,
+                    edgecolor='none'
+                )
+
+                for bar, val in zip(bars, top3_values):
+                    ax.text(
+                        min(val + 1.5, 95),
+                        bar.get_y() + bar.get_height() / 2,
+                        f"{val:.1f}%",
+                        va='center',
+                        ha='left',
+                        color='white',
+                        fontsize=11,
+                        fontweight='bold'
+                    )
+
+                ax.set_xlim(0, 100)
+                ax.set_xlabel("Confidence (%)", color='white')
+                ax.set_title(f"Face {i+1} Confidence Analysis", color='white', fontsize=12)
+                ax.tick_params(colors='white')
+                ax.spines['bottom'].set_color('#444')
+                ax.spines['left'].set_color('#444')
+                ax.spines['top'].set_visible(False)
+                ax.spines['right'].set_visible(False)
+                ax.xaxis.label.set_color('white')
+
+                plt.tight_layout()
+                st.pyplot(fig)
+                plt.close()
+
+                st.caption("This view shows both class probabilities and a certainty level derived from the strongest class score.")
+
+                with st.expander(f"View technical details for Face {i+1}"):
                     st.markdown(f"""
                     <div class="section-card">
-                        <strong>Prediction Source:</strong> {source_mode}<br>
-                        <strong>Raw Prediction:</strong> {raw_label}<br>
-                        <strong>Displayed Label:</strong> {predicted_label}<br>
+                        <strong>Analysis Mode:</strong> {analysis_mode}<br>
+                        <strong>Model Output:</strong> {raw_label}<br>
+                        <strong>Final Decision:</strong> {predicted_label}<br>
                         <strong>Confidence:</strong> {confidence:.2f}%<br>
                         <strong>Blur Detected:</strong> {blur_text}<br>
                         <strong>Blur Score:</strong> {blur_score:.2f}
                     </div>
                     """, unsafe_allow_html=True)
-
-                    if predicted_label == "without_mask":
-                        st.caption("System Insight: High confidence detection of uncovered face.")
-                    elif predicted_label == "with_mask":
-                        st.caption("System Insight: Mask detected with strong probability.")
-                    else:
-                        st.caption("System Insight: Prediction confidence is moderate, so the system marked this as uncertain.")
-
-                    if probabilities is None:
-                        probs = np.array([0.5, 0.5], dtype=float)
-                    else:
-                        probs = np.array(probabilities, dtype=float)
-
-                    top3_labels, top3_values = get_top3_display(probs)
-
-                    fig, ax = plt.subplots(figsize=(7, 2.6))
-                    fig.patch.set_facecolor('#0e1117')
-                    ax.set_facecolor('#0e1117')
-
-                    bar_colors = ["#22c55e", "#ef4444", "#eab308"]
-
-                    bars = ax.barh(
-                        top3_labels,
-                        top3_values,
-                        color=bar_colors[:len(top3_labels)],
-                        height=0.4,
-                        edgecolor='none'
-                    )
-
-                    for bar, val in zip(bars, top3_values):
-                        ax.text(
-                            min(val + 1.5, 95),
-                            bar.get_y() + bar.get_height() / 2,
-                            f"{val:.1f}%",
-                            va='center',
-                            ha='left',
-                            color='white',
-                            fontsize=11,
-                            fontweight='bold'
-                        )
-
-                    ax.set_xlim(0, 100)
-                    ax.set_xlabel("Confidence (%)", color='white')
-                    ax.set_title(f"Face {i+1} Top 3 Prediction View", color='white', fontsize=12)
-                    ax.tick_params(colors='white')
-                    ax.spines['bottom'].set_color('#444')
-                    ax.spines['left'].set_color('#444')
-                    ax.spines['top'].set_visible(False)
-                    ax.spines['right'].set_visible(False)
-                    ax.xaxis.label.set_color('white')
-
-                    plt.tight_layout()
-                    st.pyplot(fig)
-                    plt.close()
-
-                    st.caption("Top 3 view includes the two class probabilities plus an uncertainty score because this is a binary classifier.")
 
         elif uploaded_file is not None:
             st.markdown("---")
@@ -417,9 +442,9 @@ with tab1:
             st.markdown("#### How it works")
             st.markdown(
                 "1. Upload a `.jpg` or `.png` image\n"
-                "2. Haar Cascade detects faces\n"
-                "3. CNN classifies each face\n"
-                "4. Results shown with confidence"
+                "2. Detect and analyze visible face regions\n"
+                "3. Run custom CNN classification\n"
+                "4. Display the final decision with confidence"
             )
         with col2:
             st.markdown("#### Best Results With")
@@ -434,7 +459,7 @@ with tab1:
             st.markdown(
                 "- Side profile faces may be missed\n"
                 "- Very small faces may not detect\n"
-                "- Heavy occlusion may confuse model"
+                "- Heavy occlusion may affect confidence"
             )
 
 with tab2:
@@ -496,7 +521,7 @@ with tab3:
         - Side-profile faces may be harder to detect
         - Very small faces may be skipped
         - Heavy blur and extreme occlusion can reduce confidence
-        - Haar cascade face detection can miss some hard cases
+        - Face detection can still miss some hard cases
         """)
 
         st.markdown("### Failure Cases")
@@ -504,7 +529,7 @@ with tab3:
         - Severe motion blur
         - Very dark images
         - Strongly angled faces
-        - Images where the face detector misses the face box
+        - Images where clear facial structure is not visible
         """)
 
     st.markdown("### Recommended Input Conditions")
