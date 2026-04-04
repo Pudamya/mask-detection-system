@@ -17,6 +17,49 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+st.markdown("""
+<style>
+    .main {
+        padding-top: 1.2rem;
+    }
+
+    .hero-card {
+        padding: 1.4rem 1.6rem;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 18px;
+        background: linear-gradient(135deg, rgba(20,24,35,0.95), rgba(10,14,24,0.95));
+        margin-bottom: 1rem;
+    }
+
+    .metric-card {
+        padding: 1rem 1.2rem;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.06);
+        text-align: center;
+    }
+
+    .section-card {
+        padding: 1rem 1.2rem;
+        border-radius: 16px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+        margin-bottom: 1rem;
+    }
+
+    .small-label {
+        font-size: 0.9rem;
+        opacity: 0.75;
+        margin-bottom: 0.2rem;
+    }
+
+    .big-value {
+        font-size: 1.4rem;
+        font-weight: 700;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # Load Model 
 @st.cache_resource
 def load_model():
