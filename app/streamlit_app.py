@@ -10,7 +10,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from model import ModelDevelopment
 from inference import BasicInference
 
-# Config
+# Page config
 st.set_page_config(
     page_title="Face Mask Detection System | IWMI Assessment",
     page_icon="FM",
@@ -18,6 +18,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
+# Styling
 st.markdown("""
 <style>
     .main {
@@ -61,17 +62,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load model
+
 @st.cache_resource
 def load_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     model = ModelDevelopment(num_classes=2)
-    model.load_state_dict(
-        torch.load(
-            os.path.join(os.path.dirname(__file__), '..', 'models', 'best_model.pth'),
-            map_location=device
-        )
-    )
+
+    model_path = os.path.join(os.path.dirname(__file__), '..', 'models', 'best_model.pth')
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model.to(device)
     model.eval()
 
@@ -83,6 +81,45 @@ def load_model():
     )
     return inferencer, device
 
+
+@st.cache_data
+def load_metrics():
+    metrics_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'metrics.json')
+    if os.path.exists(metrics_path):
+        with open(metrics_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    return None
+
+
+def render_sidebar_metrics(metrics):
+    st.markdown("---")
+    st.markdown("**Achieved Metrics**")
+    if metrics:
+        st.markdown(f"**Accuracy:** {metrics.get('accuracy', 0.0) * 100:.2f}%")
+        st.markdown(f"**Precision:** {metrics.get('precision_weighted', 0.0):.4f}")
+        st.markdown(f"**Recall:** {metrics.get('recall_weighted', 0.0):.4f}")
+        st.markdown(f"**F1 Score:** {metrics.get('f1_weighted', 0.0):.4f}")
+    else:
+        st.caption("Run training + evaluation to generate metrics.json")
+
+
+def get_top3_display(probabilities):
+    probs = np.array(probabilities, dtype=float)
+    with_mask_score = float(probs[0] * 100)
+    without_mask_score = float(probs[1] * 100)
+    uncertainty_score = float((100.0 - abs(with_mask_score - without_mask_score)) / 2.0)
+
+    labels = ["With Mask", "Without Mask", "Uncertainty Score"]
+    values = [with_mask_score, without_mask_score, uncertainty_score]
+
+    order = np.argsort(values)[::-1]
+    ordered_labels = [labels[i] for i in order]
+    ordered_values = [values[i] for i in order]
+
+    return ordered_labels, ordered_values
+
+
+metrics = load_metrics()
 
 # Sidebar
 with st.sidebar:
@@ -113,11 +150,13 @@ with st.sidebar:
     - Label smoothing
     """)
 
+    render_sidebar_metrics(metrics)
+
     st.markdown("---")
     st.caption("IWMI Data Science Intern Assessment")
 
 
-# Hero section
+# Hero
 st.markdown("""
 <div class="hero-card">
     <h1 style="margin-bottom:0.4rem;">Face Mask Detection System</h1>
@@ -238,26 +277,27 @@ with tab1:
                     """, unsafe_allow_html=True)
 
                     if probabilities is None:
-                        probs = np.array([0.5, 0.5]) * 100
+                        probs = np.array([0.5, 0.5], dtype=float)
                     else:
-                        probs = np.array(probabilities, dtype=float) * 100
+                        probs = np.array(probabilities, dtype=float)
 
-                    fig, ax = plt.subplots(figsize=(7, 2.2))
+                    top3_labels, top3_values = get_top3_display(probs)
+
+                    fig, ax = plt.subplots(figsize=(7, 2.6))
                     fig.patch.set_facecolor('#0e1117')
                     ax.set_facecolor('#0e1117')
 
-                    classes = ['With Mask', 'Without Mask']
-                    bar_colors = ['#2ecc71', '#e74c3c']
+                    bar_colors = ['#2ecc71', '#e74c3c', '#f1c40f']
 
                     bars = ax.barh(
-                        classes,
-                        probs,
-                        color=bar_colors,
+                        top3_labels,
+                        top3_values,
+                        color=bar_colors[:len(top3_labels)],
                         height=0.5,
                         edgecolor='none'
                     )
 
-                    for bar, val in zip(bars, probs):
+                    for bar, val in zip(bars, top3_values):
                         ax.text(
                             min(val + 1.5, 95),
                             bar.get_y() + bar.get_height() / 2,
@@ -271,7 +311,7 @@ with tab1:
 
                     ax.set_xlim(0, 100)
                     ax.set_xlabel("Confidence (%)", color='white')
-                    ax.set_title(f"Face {i+1} Probability Breakdown", color='white', fontsize=12)
+                    ax.set_title(f"Face {i+1} Top 3 Prediction View", color='white', fontsize=12)
                     ax.tick_params(colors='white')
                     ax.spines['bottom'].set_color('#444')
                     ax.spines['left'].set_color('#444')
@@ -282,6 +322,8 @@ with tab1:
                     plt.tight_layout()
                     st.pyplot(fig)
                     plt.close()
+
+                    st.caption("Top 3 view includes the two class probabilities plus an uncertainty score because this is a binary classifier.")
 
         elif uploaded_file is not None:
             st.markdown("---")
@@ -325,10 +367,7 @@ with tab2:
     train_curve_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'training_curves.png')
     confusion_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'confusion_matrix.png')
 
-    if os.path.exists(metrics_path):
-        with open(metrics_path, 'r', encoding='utf-8') as f:
-            metrics = json.load(f)
-
+    if metrics:
         mc1, mc2, mc3, mc4 = st.columns(4)
         with mc1:
             st.metric("Accuracy", f"{metrics.get('accuracy', 0.0) * 100:.2f}%")
@@ -367,6 +406,14 @@ with tab3:
         - Includes preprocessing and regularization for better generalization
         """)
 
+        st.markdown("### Success Cases")
+        st.markdown("""
+        - Clear frontal face images
+        - Medium-to-large faces
+        - Good lighting conditions
+        - Standard medical and cloth masks
+        """)
+
     with col_b:
         st.markdown("### Known Limitations")
         st.markdown("""
@@ -374,6 +421,14 @@ with tab3:
         - Very small faces may be skipped
         - Heavy blur and extreme occlusion can reduce confidence
         - Haar cascade face detection can miss some hard cases
+        """)
+
+        st.markdown("### Failure Cases")
+        st.markdown("""
+        - Severe motion blur
+        - Very dark images
+        - Strongly angled faces
+        - Images where the face detector misses the face box
         """)
 
     st.markdown("### Recommended Input Conditions")
