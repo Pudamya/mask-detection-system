@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 import matplotlib.pyplot as plt
-import numpy as np
 from tqdm import tqdm
 import os
 
@@ -23,7 +22,8 @@ class ConvBlock(nn.Module):
 
     def forward(self, x):
         return self.block(x)
-    
+
+
 class SEBlock(nn.Module):
     def __init__(self, channels, reduction=16):
         super().__init__()
@@ -40,9 +40,9 @@ class SEBlock(nn.Module):
         b, c, _, _ = x.size()
         weights = self.pool(x).view(b, c)
         weights = self.fc(weights).view(b, c, 1, 1)
-        return x * weights    
+        return x * weights
 
-# Custom CNN architecture for mask classification
+
 class ModelDevelopment(nn.Module):
     def __init__(self, num_classes=2, dropout_rate=0.4):
         super(ModelDevelopment, self).__init__()
@@ -61,7 +61,7 @@ class ModelDevelopment(nn.Module):
             nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
             nn.Linear(128, num_classes)
-    )
+        )
 
     def forward(self, x):
         x = self.block1(x)
@@ -83,54 +83,62 @@ class ModelDevelopment(nn.Module):
             'architecture': str(self)
         }
 
-# Handles the full training loop, validation, and saving the best model.
+
 class ModelTrainer:
     def __init__(self, model, device, learning_rate=0.001):
         self.model = model.to(device)
         self.device = device
 
-        # CrossEntropyLoss = Softmax + NLLLoss
         self.criterion = nn.CrossEntropyLoss(label_smoothing=0.05)
 
-        # Adam optimizer: adaptive learning rates per parameter
-        self.optimizer = optim.Adam(model.parameters(), lr=learning_rate,
-                                    weight_decay=1e-4)  # L2 regularization
+        self.optimizer = optim.Adam(
+            model.parameters(),
+            lr=learning_rate,
+            weight_decay=1e-4
+        )
 
-        # Reduce LR by factor 0.5 if val_loss doesn't improve for 3 epochs
-        self.scheduler = ReduceLROnPlateau(self.optimizer, mode='min',
-                                   patience=3, factor=0.5)
+        self.scheduler = ReduceLROnPlateau(
+            self.optimizer,
+            mode='min',
+            patience=3,
+            factor=0.5
+        )
 
-        self.history = {'train_loss': [], 'val_loss': [],
-                        'train_acc': [],  'val_acc': []}
+        self.history = {
+            'train_loss': [],
+            'val_loss': [],
+            'train_acc': [],
+            'val_acc': []
+        }
         self.best_val_loss = float('inf')
         self.best_val_acc = 0.0
 
     def train_one_epoch(self, train_loader):
-        self.model.train()  # Enable dropout & batch norm training mode
+        self.model.train()
         total_loss, correct, total = 0, 0, 0
 
         for images, labels in tqdm(train_loader, desc="Training", leave=False):
             images, labels = images.to(self.device), labels.to(self.device)
+
+            self.optimizer.zero_grad()
+            outputs = self.model(images)
+            loss = self.criterion(outputs, labels)
+            loss.backward()
             torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-            self.optimizer.zero_grad()        
-            outputs = self.model(images)      
-            loss = self.criterion(outputs, labels)  
-            loss.backward()                   
-            self.optimizer.step()             
+            self.optimizer.step()
 
             total_loss += loss.item()
-            _, predicted = outputs.max(1)     
+            _, predicted = outputs.max(1)
             correct += predicted.eq(labels).sum().item()
             total += labels.size(0)
 
-        return total_loss / len(train_loader), 100. * correct / total
+        return total_loss / len(train_loader), 100.0 * correct / total
 
-    # Evaluate on validation set
     def validate(self, val_loader):
-        self.model.eval()  # Disable dropout, use running stats for BN
+        self.model.eval()
         total_loss, correct, total = 0, 0, 0
 
-        with torch.no_grad():  
+        with torch.no_grad():
             for images, labels in val_loader:
                 images, labels = images.to(self.device), labels.to(self.device)
                 outputs = self.model(images)
@@ -141,7 +149,7 @@ class ModelTrainer:
                 correct += predicted.eq(labels).sum().item()
                 total += labels.size(0)
 
-        return total_loss / len(val_loader), 100. * correct / total
+        return total_loss / len(val_loader), 100.0 * correct / total
 
     def train(self, train_loader, val_loader, epochs=30, save_path='models/best_model.pth'):
         print(f"\nTraining on: {self.device}")
@@ -149,22 +157,23 @@ class ModelTrainer:
 
         for epoch in range(1, epochs + 1):
             train_loss, train_acc = self.train_one_epoch(train_loader)
-            val_loss, val_acc     = self.validate(val_loader)
+            val_loss, val_acc = self.validate(val_loader)
 
-            # Step the scheduler based on validation loss
             self.scheduler.step(val_loss)
 
-            # Record history
             self.history['train_loss'].append(train_loss)
             self.history['val_loss'].append(val_loss)
             self.history['train_acc'].append(train_acc)
             self.history['val_acc'].append(val_acc)
 
-            print(f"Epoch [{epoch:3d}/{epochs}] "
-                  f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | "
-                  f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%")
+            current_lr = self.optimizer.param_groups[0]['lr']
+            print(
+                f"Epoch [{epoch:3d}/{epochs}] "
+                f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | "
+                f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}% | "
+                f"LR: {current_lr:.6f}"
+            )
 
-            # Save best model
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
                 self.best_val_acc = val_acc
@@ -175,12 +184,13 @@ class ModelTrainer:
         return self.history
 
     def plot_history(self, save_dir='results'):
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
+        os.makedirs(save_dir, exist_ok=True)
 
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
         epochs = range(1, len(self.history['train_loss']) + 1)
 
         ax1.plot(epochs, self.history['train_loss'], 'b-o', label='Train Loss', markersize=3)
-        ax1.plot(epochs, self.history['val_loss'],   'r-o', label='Val Loss',   markersize=3)
+        ax1.plot(epochs, self.history['val_loss'], 'r-o', label='Val Loss', markersize=3)
         ax1.set_title('Loss per Epoch')
         ax1.set_xlabel('Epoch')
         ax1.set_ylabel('Loss')
@@ -188,7 +198,7 @@ class ModelTrainer:
         ax1.grid(True)
 
         ax2.plot(epochs, self.history['train_acc'], 'b-o', label='Train Acc', markersize=3)
-        ax2.plot(epochs, self.history['val_acc'],   'r-o', label='Val Acc',   markersize=3)
+        ax2.plot(epochs, self.history['val_acc'], 'r-o', label='Val Acc', markersize=3)
         ax2.set_title('Accuracy per Epoch')
         ax2.set_xlabel('Epoch')
         ax2.set_ylabel('Accuracy (%)')
