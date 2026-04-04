@@ -2,14 +2,15 @@ import streamlit as st
 import torch
 import os
 import sys
+import json
+import numpy as np
 import matplotlib.pyplot as plt
-
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from model import ModelDevelopment
 from inference import BasicInference
 
-#Config
+# Config
 st.set_page_config(
     page_title="Face Mask Detection System | IWMI Assessment",
     page_icon="FM",
@@ -60,22 +61,28 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load Model 
+# Load model
 @st.cache_resource
 def load_model():
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    model  = ModelDevelopment(num_classes=2)
-    model.load_state_dict(torch.load(
-        os.path.join(os.path.dirname(__file__), '..', 'models', 'best_model.pth'),
-        map_location=device
-    ))
+    model = ModelDevelopment(num_classes=2)
+    model.load_state_dict(
+        torch.load(
+            os.path.join(os.path.dirname(__file__), '..', 'models', 'best_model.pth'),
+            map_location=device
+        )
+    )
     model.to(device)
     model.eval()
+
     inferencer = BasicInference(
-        model, device, img_size=128,
+        model=model,
+        device=device,
+        img_size=128,
         classes=['with_mask', 'without_mask']
     )
     return inferencer, device
+
 
 # Sidebar
 with st.sidebar:
@@ -109,7 +116,8 @@ with st.sidebar:
     st.markdown("---")
     st.caption("IWMI Data Science Intern Assessment")
 
-# Main Title 
+
+# Hero section
 st.markdown("""
 <div class="hero-card">
     <h1 style="margin-bottom:0.4rem;">Face Mask Detection System</h1>
@@ -160,8 +168,8 @@ with metric_col4:
 st.markdown("")
 
 tab1, tab2, tab3 = st.tabs(["Live Detection", "Performance", "System Notes"])
+
 with tab1:
-    # File Upload 
     uploaded_file = st.file_uploader(
         "Choose an image...",
         type=['jpg', 'jpeg', 'png'],
@@ -171,7 +179,6 @@ with tab1:
     if uploaded_file is not None:
         inferencer, device = load_model()
 
-        # Save temp file
         temp_path = "temp_upload.jpg"
         with open(temp_path, "wb") as f:
             f.write(uploaded_file.getvalue())
@@ -188,61 +195,83 @@ with tab1:
                 try:
                     annotated, results = inferencer.detect_images(temp_path)
                     st.image(annotated, width="stretch")
+
+                    used_fallback = any(r.get('used_full_image_fallback', False) for r in results)
+                    if used_fallback:
+                        st.info("No reliable face box was detected, so the system used full-image classification as a fallback.")
+
                 except Exception as e:
                     st.error(f"Error during detection: {e}")
                     results = []
 
-        # Prediction Details
         if results:
             st.markdown("---")
             st.subheader("Prediction Details")
 
             for i, r in enumerate(results):
+                predicted_label = r.get('class', 'unknown')
+                raw_label = r.get('raw_class', predicted_label)
+                confidence = float(r.get('confidence', 0.0))
+                probabilities = r.get('probabilities', None)
+                blur_detected = r.get('blur_detected', False)
+                blur_score = float(r.get('blur_score', 0.0))
+                blur_text = "Yes" if blur_detected else "No"
+                source_mode = "Full-image fallback" if r.get("used_full_image_fallback", False) else "Detected face crop"
+
                 with st.container():
-                    # Status badge
-                    if r['class'] == 'with_mask':
-                        st.success(f"Face {i+1}: **WITH MASK** - Confidence: `{r['confidence']:.1f}%`")
+                    if predicted_label == 'with_mask':
+                        st.success(f"Face {i+1}: **WITH MASK** - Confidence: `{confidence:.1f}%`")
+                    elif predicted_label == 'without_mask':
+                        st.error(f"Face {i+1}: **WITHOUT MASK** - Confidence: `{confidence:.1f}%`")
                     else:
-                        st.error(f"Face {i+1}: **WITHOUT MASK** - Confidence: `{r['confidence']:.1f}%`")
-                    blur_text = "Yes" if r.get('blur_detected', False) else "No"
-                    raw_class = r.get('raw_class', r['class'])
+                        st.warning(f"Face {i+1}: **UNCERTAIN** - Confidence: `{confidence:.1f}%`")
 
                     st.markdown(f"""
                     <div class="section-card">
-                        <strong>Raw Prediction:</strong> {raw_class}<br>
-                        <strong>Displayed Label:</strong> {r['class']}<br>
-                        <strong>Confidence:</strong> {r['confidence']:.2f}%<br>
+                        <strong>Prediction Source:</strong> {source_mode}<br>
+                        <strong>Raw Prediction:</strong> {raw_label}<br>
+                        <strong>Displayed Label:</strong> {predicted_label}<br>
+                        <strong>Confidence:</strong> {confidence:.2f}%<br>
                         <strong>Blur Detected:</strong> {blur_text}<br>
-                        <strong>Blur Score:</strong> {r.get('blur_score', 0.0):.2f}
+                        <strong>Blur Score:</strong> {blur_score:.2f}
                     </div>
-                    """, unsafe_allow_html=True)    
+                    """, unsafe_allow_html=True)
 
-                    # Clean bar chart
+                    if probabilities is None:
+                        probs = np.array([0.5, 0.5]) * 100
+                    else:
+                        probs = np.array(probabilities, dtype=float) * 100
+
                     fig, ax = plt.subplots(figsize=(7, 2.2))
                     fig.patch.set_facecolor('#0e1117')
                     ax.set_facecolor('#0e1117')
 
-                    classes     = ['With Mask', 'Without Mask']
-                    probs       = r['probabilities'] * 100
-                    bar_colors  = ['#2ecc71', '#e74c3c']
+                    classes = ['With Mask', 'Without Mask']
+                    bar_colors = ['#2ecc71', '#e74c3c']
 
-                    bars = ax.barh(classes, probs, color=bar_colors,
-                                height=0.5, edgecolor='none')
+                    bars = ax.barh(
+                        classes,
+                        probs,
+                        color=bar_colors,
+                        height=0.5,
+                        edgecolor='none'
+                    )
 
-                    # Value labels on bars
                     for bar, val in zip(bars, probs):
                         ax.text(
                             min(val + 1.5, 95),
                             bar.get_y() + bar.get_height() / 2,
                             f"{val:.1f}%",
-                            va='center', ha='left',
-                            color='white', fontsize=11, fontweight='bold'
+                            va='center',
+                            ha='left',
+                            color='white',
+                            fontsize=11,
+                            fontweight='bold'
                         )
 
                     ax.set_xlim(0, 100)
                     ax.set_xlabel("Confidence (%)", color='white')
-                    ax.set_title(f"Face {i+1} — Class Probabilities",
-                                color='white', fontsize=12)
+                    ax.set_title(f"Face {i+1} Probability Breakdown", color='white', fontsize=12)
                     ax.tick_params(colors='white')
                     ax.spines['bottom'].set_color('#444')
                     ax.spines['left'].set_color('#444')
@@ -254,34 +283,63 @@ with tab1:
                     st.pyplot(fig)
                     plt.close()
 
-        elif len(results) == 0 and uploaded_file is not None:
+        elif uploaded_file is not None:
             st.markdown("---")
-            st.warning("No faces were detected in this image. Try a clearer frontal face photo.")
+            st.warning("No face or usable fallback prediction could be produced. Try a clearer, front-facing image with better lighting.")
 
-        # Cleanup temp file
         if os.path.exists(temp_path):
             os.remove(temp_path)
 
     else:
-        # Show placeholder when no image uploaded
         st.info("Upload an image above to get started.")
 
         col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown("#### How it works")
-            st.markdown("1. Upload a `.jpg` or `.png` image\n2. Haar Cascade detects faces\n3. CNN classifies each face\n4. Results shown with confidence")
+            st.markdown(
+                "1. Upload a `.jpg` or `.png` image\n"
+                "2. Haar Cascade detects faces\n"
+                "3. CNN classifies each face\n"
+                "4. Results shown with confidence"
+            )
         with col2:
             st.markdown("#### Best Results With")
-            st.markdown("- Clear frontal face photos\n- Good lighting\n- Face clearly visible\n- Single or multiple people")
+            st.markdown(
+                "- Clear frontal face photos\n"
+                "- Good lighting\n"
+                "- Face clearly visible\n"
+                "- Single or multiple people"
+            )
         with col3:
             st.markdown("#### Limitations")
-            st.markdown("- Side profile faces may be missed\n- Very small faces may not detect\n- Heavy occlusion may confuse model")
+            st.markdown(
+                "- Side profile faces may be missed\n"
+                "- Very small faces may not detect\n"
+                "- Heavy occlusion may confuse model"
+            )
 
 with tab2:
     st.subheader("Training and Evaluation Artifacts")
 
+    metrics_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'metrics.json')
     train_curve_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'training_curves.png')
     confusion_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'confusion_matrix.png')
+
+    if os.path.exists(metrics_path):
+        with open(metrics_path, 'r', encoding='utf-8') as f:
+            metrics = json.load(f)
+
+        mc1, mc2, mc3, mc4 = st.columns(4)
+        with mc1:
+            st.metric("Accuracy", f"{metrics.get('accuracy', 0.0) * 100:.2f}%")
+        with mc2:
+            st.metric("Precision", f"{metrics.get('precision_weighted', 0.0):.4f}")
+        with mc3:
+            st.metric("Recall", f"{metrics.get('recall_weighted', 0.0):.4f}")
+        with mc4:
+            st.metric("F1 Score", f"{metrics.get('f1_weighted', 0.0):.4f}")
+    else:
+        st.info("metrics.json not found yet. Run training and evaluation first.")
 
     c1, c2 = st.columns(2)
 
@@ -295,7 +353,7 @@ with tab2:
         if os.path.exists(confusion_path):
             st.image(confusion_path, caption="Confusion Matrix", width="stretch")
         else:
-            st.info("Confusion matrix image not found yet.")            
+            st.info("Confusion matrix image not found yet.")
 
 with tab3:
     col_a, col_b = st.columns(2)
@@ -324,4 +382,11 @@ with tab3:
     - Good lighting conditions
     - Medium to high image quality
     - Minimal motion blur
+    """)
+
+    st.markdown("### Evaluation Note")
+    st.markdown("""
+    This system is optimized for strong binary mask classification performance on the provided dataset.
+    Reported evaluation metrics are measured on a held-out test split, but real-world performance can still vary
+    for side profiles, very small faces, extreme blur, or severe occlusion.
     """)
