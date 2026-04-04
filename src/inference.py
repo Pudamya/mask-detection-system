@@ -68,12 +68,11 @@ class BasicInference:
         # Detect faces with stricter parameters to avoid duplicates
         faces = self.face_cascade.detectMultiScale(
             gray,
-            scaleFactor=1.08,
-            minNeighbors=7,
-            minSize=(70, 70),
+            scaleFactor=1.05,
+            minNeighbors=5,
+            minSize=(45, 45),
             flags=cv2.CASCADE_SCALE_IMAGE
         )
-
         if len(faces) > 0:
             faces = self._apply_nms(faces, overlap_threshold=0.3)
 
