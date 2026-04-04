@@ -77,10 +77,10 @@ class ModelDevelopment(nn.Module):
         trainable_params = sum(p.numel() for p in self.parameters() if p.requires_grad)
 
         return {
-            'model_name': 'CustomAttentionCNN',
-            'total_params': total_params,
-            'trainable_params': trainable_params,
-            'architecture': str(self)
+            "model_name": "CustomAttentionCNN",
+            "total_params": total_params,
+            "trainable_params": trainable_params,
+            "architecture": str(self)
         }
 
 
@@ -99,26 +99,27 @@ class ModelTrainer:
 
         self.scheduler = ReduceLROnPlateau(
             self.optimizer,
-            mode='min',
+            mode="min",
             patience=3,
             factor=0.5
         )
 
         self.history = {
-            'train_loss': [],
-            'val_loss': [],
-            'train_acc': [],
-            'val_acc': []
+            "train_loss": [],
+            "val_loss": [],
+            "train_acc": [],
+            "val_acc": []
         }
-        self.best_val_loss = float('inf')
+        self.best_val_loss = float("inf")
         self.best_val_acc = 0.0
 
     def train_one_epoch(self, train_loader):
         self.model.train()
-        total_loss, correct, total = 0, 0, 0
+        total_loss, correct, total = 0.0, 0, 0
 
         for images, labels in tqdm(train_loader, desc="Training", leave=False):
-            images, labels = images.to(self.device), labels.to(self.device)
+            images = images.to(self.device)
+            labels = labels.to(self.device)
 
             self.optimizer.zero_grad()
             outputs = self.model(images)
@@ -136,11 +137,13 @@ class ModelTrainer:
 
     def validate(self, val_loader):
         self.model.eval()
-        total_loss, correct, total = 0, 0, 0
+        total_loss, correct, total = 0.0, 0, 0
 
         with torch.no_grad():
             for images, labels in val_loader:
-                images, labels = images.to(self.device), labels.to(self.device)
+                images = images.to(self.device)
+                labels = labels.to(self.device)
+
                 outputs = self.model(images)
                 loss = self.criterion(outputs, labels)
 
@@ -151,7 +154,7 @@ class ModelTrainer:
 
         return total_loss / len(val_loader), 100.0 * correct / total
 
-    def train(self, train_loader, val_loader, epochs=30, save_path='models/best_model.pth'):
+    def train(self, train_loader, val_loader, epochs=30, save_path="models/best_model.pth"):
         print(f"\nTraining on: {self.device}")
         print(f"Epochs: {epochs}\n")
 
@@ -161,12 +164,12 @@ class ModelTrainer:
 
             self.scheduler.step(val_loss)
 
-            self.history['train_loss'].append(train_loss)
-            self.history['val_loss'].append(val_loss)
-            self.history['train_acc'].append(train_acc)
-            self.history['val_acc'].append(val_acc)
+            self.history["train_loss"].append(train_loss)
+            self.history["val_loss"].append(val_loss)
+            self.history["train_acc"].append(train_acc)
+            self.history["val_acc"].append(val_acc)
 
-            current_lr = self.optimizer.param_groups[0]['lr']
+            current_lr = self.optimizer.param_groups[0]["lr"]
             print(
                 f"Epoch [{epoch:3d}/{epochs}] "
                 f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | "
@@ -183,29 +186,29 @@ class ModelTrainer:
         print("\nTraining complete!")
         return self.history
 
-    def plot_history(self, save_dir='results'):
+    def plot_history(self, save_dir="results"):
         os.makedirs(save_dir, exist_ok=True)
 
         fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
-        epochs = range(1, len(self.history['train_loss']) + 1)
+        epochs = range(1, len(self.history["train_loss"]) + 1)
 
-        ax1.plot(epochs, self.history['train_loss'], 'b-o', label='Train Loss', markersize=3)
-        ax1.plot(epochs, self.history['val_loss'], 'r-o', label='Val Loss', markersize=3)
-        ax1.set_title('Loss per Epoch')
-        ax1.set_xlabel('Epoch')
-        ax1.set_ylabel('Loss')
+        ax1.plot(epochs, self.history["train_loss"], "b-o", label="Train Loss", markersize=3)
+        ax1.plot(epochs, self.history["val_loss"], "r-o", label="Val Loss", markersize=3)
+        ax1.set_title("Loss per Epoch")
+        ax1.set_xlabel("Epoch")
+        ax1.set_ylabel("Loss")
         ax1.legend()
         ax1.grid(True)
 
-        ax2.plot(epochs, self.history['train_acc'], 'b-o', label='Train Acc', markersize=3)
-        ax2.plot(epochs, self.history['val_acc'], 'r-o', label='Val Acc', markersize=3)
-        ax2.set_title('Accuracy per Epoch')
-        ax2.set_xlabel('Epoch')
-        ax2.set_ylabel('Accuracy (%)')
+        ax2.plot(epochs, self.history["train_acc"], "b-o", label="Train Acc", markersize=3)
+        ax2.plot(epochs, self.history["val_acc"], "r-o", label="Val Acc", markersize=3)
+        ax2.set_title("Accuracy per Epoch")
+        ax2.set_xlabel("Epoch")
+        ax2.set_ylabel("Accuracy (%)")
         ax2.legend()
         ax2.grid(True)
 
         plt.tight_layout()
-        plt.savefig(os.path.join(save_dir, 'training_curves.png'), dpi=150)
-        plt.show()
+        plt.savefig(os.path.join(save_dir, "training_curves.png"), dpi=150)
+        plt.close(fig)
         print("Training curves saved.")
