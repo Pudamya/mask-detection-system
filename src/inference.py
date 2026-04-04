@@ -41,6 +41,14 @@ class BasicInference:
                                  std=[0.229, 0.224, 0.225])
         ])
 
+    def is_blurry(self, image, threshold=80.0):
+        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+        variance = cv2.Laplacian(gray, cv2.CV_64F).var()
+        return variance < threshold, variance
+
+    def is_too_small(self, w, h, min_size=60):
+        return w < min_size or h < min_size   
+
     def detect_images(self, image_path):
         image = cv2.imread(image_path)
         if image is None:
