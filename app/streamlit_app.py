@@ -311,20 +311,6 @@ with tab1:
                     annotated, results = inferencer.detect_images(temp_path)
                     st.image(annotated, width="stretch")
 
-                    used_fallback = any(r.get('used_full_image_fallback', False) for r in results)
-                    if used_fallback:
-                        st.markdown("""
-                        <div style="
-                        background:rgba(59,130,246,0.14);
-                        border-left:4px solid #3b82f6;
-                        padding:10px;
-                        border-radius:8px;
-                        margin-top:8px;
-                        ">
-                        Adaptive image analysis mode was used for this prediction.
-                        </div>
-                        """, unsafe_allow_html=True)
-
                 except Exception as e:
                     st.error(f"Error during detection: {e}")
                     results = []
@@ -429,7 +415,7 @@ with tab1:
 
         elif uploaded_file is not None:
             st.markdown("---")
-            st.warning("No face or usable fallback prediction could be produced. Try a clearer, front-facing image with better lighting.")
+            st.error("No human face was detected in the uploaded image. Please upload a clear image containing a visible human face.")
 
         if os.path.exists(temp_path):
             os.remove(temp_path)
