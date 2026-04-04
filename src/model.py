@@ -177,7 +177,7 @@ class ModelTrainer:
                 f"LR: {current_lr:.6f}"
             )
 
-            if val_loss < self.best_val_loss:
+            if val_acc > self.best_val_acc:
                 self.best_val_loss = val_loss
                 self.best_val_acc = val_acc
                 torch.save(self.model.state_dict(), save_path)
