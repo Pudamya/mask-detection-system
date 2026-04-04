@@ -62,22 +62,18 @@ class BasicInference:
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-        # Equalize histogram — improves detection in bright/dark images
+        # Equalize histogram 
         gray = cv2.equalizeHist(gray)
 
         # Detect faces with stricter parameters to avoid duplicates
         faces = self.face_cascade.detectMultiScale(
             gray,
-            scaleFactor=1.05,    # smaller step = more thorough but slower
-            minNeighbors=8,       # higher = fewer false positives / duplicates
-            minSize=(80, 80),     # ignore tiny detections
+            scaleFactor=1.08,
+            minNeighbors=7,
+            minSize=(70, 70),
             flags=cv2.CASCADE_SCALE_IMAGE
         )
 
-        # ── Non-Maximum Suppression ──────────────────────────────────
-        # CONCEPT: Even with strict params, sometimes overlapping boxes
-        # appear for the same face. NMS keeps only the best box when
-        # two boxes overlap more than the threshold (50% overlap here).
         if len(faces) > 0:
             faces = self._apply_nms(faces, overlap_threshold=0.3)
 
@@ -132,7 +128,7 @@ class BasicInference:
 
         x1, y1, x2, y2 = boxes[:,0], boxes[:,1], boxes[:,2], boxes[:,3]
         areas = (x2 - x1) * (y2 - y1)
-        order = areas.argsort()[::-1]  # process largest boxes first
+        order = areas.argsort()[::-1]  
 
         keep = []
         while order.size > 0:
