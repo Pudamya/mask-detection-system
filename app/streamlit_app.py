@@ -20,6 +20,7 @@ def load_model():
     model  = ModelDevelopment(num_classes=2)
     model.load_state_dict(torch.load('models/best_model.pth',
                                       map_location=device))
+    model.to(device)   # ← ADD THIS LINE — moves model weights to GPU
     model.eval()
     inferencer = BasicInference(model, device, img_size=128,
                                 classes=['with_mask', 'without_mask'])
