@@ -146,23 +146,24 @@ class BasicPreprocessing:
         return train_loader, val_loader, test_loader
 
     def visualize_samples(self, image_paths, labels, n=8):
-        """Plots sample images from the dataset."""
         fig, axes = plt.subplots(2, n // 2, figsize=(15, 6))
         axes = axes.flatten()
 
         indices = np.random.choice(len(image_paths), n, replace=False)
+
         for i, idx in enumerate(indices):
             img = cv2.imread(image_paths[idx])
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img = cv2.resize(img, (128, 128))
+            img = cv2.resize(img, (self.img_size, self.img_size))
             axes[i].imshow(img)
             axes[i].set_title(self.classes[labels[idx]])
             axes[i].axis('off')
 
         plt.tight_layout()
-        plt.savefig('results/sample_images.png')
+        save_path = os.path.join(self.results_dir, 'sample_images.png')
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
         plt.show()
-        print("Sample images saved to results/sample_images.png")
+        print(f"Sample images saved to {save_path}")
 
     def summarize_dataset(self, labels):
         class_counts = Counter(labels)
