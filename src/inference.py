@@ -195,13 +195,18 @@ class BasicInference:
                 all_preds.extend(predicted.cpu().numpy())
                 all_labels.extend(labels.numpy())
 
-        # Print report
+        accuracy = accuracy_score(all_labels, all_preds)
+        precision = precision_score(all_labels, all_preds, average='weighted')
+        recall = recall_score(all_labels, all_preds, average='weighted')
+        f1 = f1_score(all_labels, all_preds, average='weighted')
+
         print("\nTest Set Evaluation")
-        print(f"Accuracy: {accuracy_score(all_labels, all_preds)*100:.2f}%")
-        print(f"F1 Score: {f1_score(all_labels, all_preds, average='weighted'):.4f}")
+        print(f"Accuracy : {accuracy * 100:.2f}%")
+        print(f"Precision: {precision:.4f}")
+        print(f"Recall   : {recall:.4f}")
+        print(f"F1 Score : {f1:.4f}")
         print("\nClassification Report:")
-        print(classification_report(all_labels, all_preds,
-                                     target_names=self.classes))
+        print(classification_report(all_labels, all_preds, target_names=self.classes))
 
         # Confusion matrix
         cm = confusion_matrix(all_labels, all_preds)
