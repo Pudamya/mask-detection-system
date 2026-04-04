@@ -48,6 +48,11 @@ class BasicInference:
 
     def is_too_small(self, w, h, min_size=60):
         return w < min_size or h < min_size   
+    
+    def format_prediction_label(self, predicted_class, confidence, threshold=60.0):
+        if confidence < threshold:
+            return "uncertain"
+        return predicted_class
 
     def detect_images(self, image_path):
         image = cv2.imread(image_path)
