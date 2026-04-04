@@ -88,7 +88,37 @@ class BasicInference:
         annotated = image_rgb.copy()
 
         if len(faces) == 0:
-            print("No faces detected in the image.")
+            h_img, w_img = image_rgb.shape[:2]
+
+            pil_img = Image.fromarray(image_rgb)
+            tensor = self.transform(pil_img).unsqueeze(0).to(self.device)
+            predicted_class, confidence, probabilities = self.classify_face(tensor)
+            display_class = self.format_prediction_label(predicted_class, confidence, threshold=60.0)
+
+            results.append({
+                'bbox': (0, 0, w_img, h_img),
+                'class': display_class,
+                'raw_class': predicted_class,
+                'confidence': float(confidence),
+                'probabilities': probabilities,
+                'blur_detected': False,
+                'blur_score': 0.0,
+                'used_full_image_fallback': True
+            })
+
+            color = (0, 180, 0) if display_class == 'with_mask' else (220, 40, 40) if display_class == 'without_mask' else (255, 165, 0)
+            label = f"{display_class} ({confidence:.1f}%)"
+            cv2.rectangle(annotated, (10, 10), (w_img - 10, h_img - 10), color, 3)
+            cv2.putText(
+                annotated,
+                label,
+                (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.8,
+                (255, 255, 255),
+                2
+            )
+
             return annotated, results
 
         for (x, y, w, h) in faces:
