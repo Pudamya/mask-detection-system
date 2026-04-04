@@ -79,21 +79,33 @@ class BasicPreprocessing:
     def get_transforms(self):
         train_transform = transforms.Compose([
             transforms.Resize((self.img_size, self.img_size)),
-            transforms.RandomHorizontalFlip(p=0.5),       # 50% chance flip
-            transforms.RandomRotation(degrees=15),         # rotate up to 15°
-            transforms.ColorJitter(brightness=0.3,
-                                   contrast=0.3,
-                                   saturation=0.2),        # vary lighting
-            transforms.ToTensor(),                          # converts to [0,1]
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225]) # standardize
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomRotation(degrees=12),
+            transforms.RandomAffine(
+                degrees=0,
+                translate=(0.05, 0.05),
+                scale=(0.95, 1.05)
+            ),
+            transforms.ColorJitter(
+                brightness=0.25,
+                contrast=0.25,
+                saturation=0.15,
+                hue=0.02
+            ),
+            transforms.ToTensor(),
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            )
         ])
 
         val_test_transform = transforms.Compose([
             transforms.Resize((self.img_size, self.img_size)),
             transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+            transforms.Normalize(
+                mean=[0.485, 0.456, 0.406],
+                std=[0.229, 0.224, 0.225]
+            )
         ])
 
         return train_transform, val_test_transform
