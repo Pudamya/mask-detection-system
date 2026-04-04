@@ -1,11 +1,9 @@
 import streamlit as st
 import torch
-import cv2
-import numpy as np
-from PIL import Image
-import sys, os
+import os
+import sys
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
+
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 from model import ModelDevelopment
