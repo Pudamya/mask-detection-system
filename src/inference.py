@@ -93,6 +93,7 @@ class BasicInference:
             y2 = min(image_rgb.shape[0], y + h + pad)
 
             face_img = image_rgb[y1:y2, x1:x2]
+            is_blur, blur_score = self.is_blurry(face_img)
             pil_face = Image.fromarray(face_img)
 
             tensor = self.transform(pil_face).unsqueeze(0).to(self.device)
@@ -102,7 +103,9 @@ class BasicInference:
                 'bbox': (x, y, w, h),
                 'class': predicted_class,
                 'confidence': confidence,
-                'probabilities': probabilities
+                'probabilities': probabilities,
+                'blur_detected': is_blur,
+                'blur_score': float(blur_score)
             })
 
             # Green = mask, Red = no mask
