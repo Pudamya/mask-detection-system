@@ -110,8 +110,14 @@ class BasicInference:
             })
 
             # Green = mask, Red = no mask
-            color = (0, 200, 0) if predicted_class == 'with_mask' else (200, 0, 0)
-            label = f"{predicted_class} ({confidence:.1f}%)"
+            if display_class == 'with_mask':
+                color = (0, 180, 0)
+            elif display_class == 'without_mask':
+                color = (220, 40, 40)
+            else:
+                color = (255, 165, 0)
+
+            label = f"{display_class} ({confidence:.1f}%)"
 
             # Draw filled rectangle behind text for readability
             cv2.rectangle(annotated, (x, y), (x + w, y + h), color, 2)
