@@ -289,3 +289,31 @@ with tab2:
         else:
             st.info("Confusion matrix image not found yet.")            
 
+with tab3:
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.markdown("### Strengths")
+        st.markdown("""
+        - Uses a custom CNN designed from scratch
+        - Handles single and multiple face detections
+        - Shows confidence-aware predictions
+        - Includes preprocessing and regularization for better generalization
+        """)
+
+    with col_b:
+        st.markdown("### Known Limitations")
+        st.markdown("""
+        - Side-profile faces may be harder to detect
+        - Very small faces may be skipped
+        - Heavy blur and extreme occlusion can reduce confidence
+        - Haar cascade face detection can miss some hard cases
+        """)
+
+    st.markdown("### Recommended Input Conditions")
+    st.markdown("""
+    - Clear frontal face images
+    - Good lighting conditions
+    - Medium to high image quality
+    - Minimal motion blur
+    """)
