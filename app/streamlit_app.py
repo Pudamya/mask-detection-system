@@ -79,39 +79,35 @@ def load_model():
 
 # Sidebar
 with st.sidebar:
-    st.image("https://www.iwmi.cgiar.org/wp-content/uploads/2020/09/IWMI-logo.png", width=180)
-    st.title("Model Info")
-
-    st.markdown("**Architecture:** Custom CNN")
+    st.title("System Overview")
+    st.markdown("**Architecture:** CustomAttentionCNN")
     st.markdown("**Framework:** PyTorch")
-    st.markdown("**Input Size:** 128 × 128 × 3")
-    st.markdown("**Classes:** `with_mask` · `without_mask`")
+    st.markdown("**Input Size:** 128 x 128 x 3")
+    st.markdown("**Classes:** with_mask, without_mask")
 
     st.markdown("---")
-    st.markdown("**Network Layers:**")
+    st.markdown("**Backbone Design**")
     st.markdown("""
-    - Conv Block 1 → 32 filters
-    - Conv Block 2 → 64 filters
-    - Conv Block 3 → 128 filters
-    - Conv Block 4 → 256 filters
-    - FC Layer → 512 units
-    - FC Layer → 128 units
-    - Output → 2 classes
+    - Block 1: 32 channels
+    - Block 2: 64 channels
+    - Block 3: 128 channels
+    - Block 4: 256 channels
+    - SE attention block
+    - Global average pooling head
     """)
-    st.markdown("**Total Parameters:** ~8.8M")
-    st.markdown("**Optimizer:** Adam + ReduceLROnPlateau")
-    st.markdown("**Regularization:** BatchNorm + Dropout")
 
     st.markdown("---")
-
-    # Show accuracy if results file exists
-    results_path = os.path.join(os.path.dirname(__file__), '..', 'results', 'confusion_matrix.png')
-    if os.path.exists(results_path):
-        st.markdown("**Confusion Matrix:**")
-        st.image(results_path)
+    st.markdown("**Training Setup**")
+    st.markdown("""
+    - Adam optimizer
+    - ReduceLROnPlateau scheduler
+    - Batch normalization
+    - Dropout regularization
+    - Label smoothing
+    """)
 
     st.markdown("---")
-    st.markdown("*IWMI Data Science Assessment*")
+    st.caption("IWMI Data Science Intern Assessment")
 
 # Main Title 
 st.markdown("""
