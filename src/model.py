@@ -23,6 +23,24 @@ class ConvBlock(nn.Module):
 
     def forward(self, x):
         return self.block(x)
+    
+class SEBlock(nn.Module):
+    def __init__(self, channels, reduction=16):
+        super().__init__()
+        reduced = max(channels // reduction, 8)
+        self.pool = nn.AdaptiveAvgPool2d(1)
+        self.fc = nn.Sequential(
+            nn.Linear(channels, reduced),
+            nn.ReLU(inplace=True),
+            nn.Linear(reduced, channels),
+            nn.Sigmoid()
+        )
+
+    def forward(self, x):
+        b, c, _, _ = x.size()
+        weights = self.pool(x).view(b, c)
+        weights = self.fc(weights).view(b, c, 1, 1)
+        return x * weights    
 
 # Custom CNN architecture for mask classification
 class ModelDevelopment(nn.Module):
