@@ -163,106 +163,108 @@ with metric_col4:
 
 st.markdown("")
 
-# File Upload 
-uploaded_file = st.file_uploader(
-    "Choose an image...",
-    type=['jpg', 'jpeg', 'png'],
-    help="Upload a clear frontal face image for best results"
-)
+tab1, tab2, tab3 = st.tabs(["Live Detection", "Performance", "System Notes"])
+with tab1:
+    # File Upload 
+    uploaded_file = st.file_uploader(
+        "Choose an image...",
+        type=['jpg', 'jpeg', 'png'],
+        help="Upload a clear frontal face image for best results"
+    )
 
-if uploaded_file is not None:
-    inferencer, device = load_model()
+    if uploaded_file is not None:
+        inferencer, device = load_model()
 
-    # Save temp file
-    temp_path = "temp_upload.jpg"
-    with open(temp_path, "wb") as f:
-        f.write(uploaded_file.getvalue())
+        # Save temp file
+        temp_path = "temp_upload.jpg"
+        with open(temp_path, "wb") as f:
+            f.write(uploaded_file.getvalue())
 
-    col1, col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
-    with col1:
-        st.subheader("Uploaded Image")
-        st.image(temp_path, use_column_width=True)
+        with col1:
+            st.subheader("Uploaded Image")
+            st.image(temp_path, use_column_width=True)
 
-    with col2:
-        st.subheader("Detection Result")
-        with st.spinner("Detecting faces and classifying..."):
-            try:
-                annotated, results = inferencer.detect_images(temp_path)
-                st.image(annotated, use_column_width=True)
-            except Exception as e:
-                st.error(f"Error during detection: {e}")
-                results = []
+        with col2:
+            st.subheader("Detection Result")
+            with st.spinner("Detecting faces and classifying..."):
+                try:
+                    annotated, results = inferencer.detect_images(temp_path)
+                    st.image(annotated, use_column_width=True)
+                except Exception as e:
+                    st.error(f"Error during detection: {e}")
+                    results = []
 
-    # Prediction Details
-    if results:
-        st.markdown("---")
-        st.subheader("Prediction Details")
+        # Prediction Details
+        if results:
+            st.markdown("---")
+            st.subheader("Prediction Details")
 
-        for i, r in enumerate(results):
-            with st.container():
-                # Status badge
-                if r['class'] == 'with_mask':
-                    st.success(f"Face {i+1}: **WITH MASK** — Confidence: `{r['confidence']:.1f}%`")
-                else:
-                    st.error(f"Face {i+1}: **WITHOUT MASK** — Confidence: `{r['confidence']:.1f}%`")
+            for i, r in enumerate(results):
+                with st.container():
+                    # Status badge
+                    if r['class'] == 'with_mask':
+                        st.success(f"Face {i+1}: **WITH MASK** — Confidence: `{r['confidence']:.1f}%`")
+                    else:
+                        st.error(f"Face {i+1}: **WITHOUT MASK** — Confidence: `{r['confidence']:.1f}%`")
 
-                # Clean bar chart
-                fig, ax = plt.subplots(figsize=(7, 2.2))
-                fig.patch.set_facecolor('#0e1117')
-                ax.set_facecolor('#0e1117')
+                    # Clean bar chart
+                    fig, ax = plt.subplots(figsize=(7, 2.2))
+                    fig.patch.set_facecolor('#0e1117')
+                    ax.set_facecolor('#0e1117')
 
-                classes     = ['With Mask', 'Without Mask']
-                probs       = r['probabilities'] * 100
-                bar_colors  = ['#2ecc71', '#e74c3c']
+                    classes     = ['With Mask', 'Without Mask']
+                    probs       = r['probabilities'] * 100
+                    bar_colors  = ['#2ecc71', '#e74c3c']
 
-                bars = ax.barh(classes, probs, color=bar_colors,
-                               height=0.5, edgecolor='none')
+                    bars = ax.barh(classes, probs, color=bar_colors,
+                                height=0.5, edgecolor='none')
 
-                # Value labels on bars
-                for bar, val in zip(bars, probs):
-                    ax.text(
-                        min(val + 1.5, 95),
-                        bar.get_y() + bar.get_height() / 2,
-                        f"{val:.1f}%",
-                        va='center', ha='left',
-                        color='white', fontsize=11, fontweight='bold'
-                    )
+                    # Value labels on bars
+                    for bar, val in zip(bars, probs):
+                        ax.text(
+                            min(val + 1.5, 95),
+                            bar.get_y() + bar.get_height() / 2,
+                            f"{val:.1f}%",
+                            va='center', ha='left',
+                            color='white', fontsize=11, fontweight='bold'
+                        )
 
-                ax.set_xlim(0, 100)
-                ax.set_xlabel("Confidence (%)", color='white')
-                ax.set_title(f"Face {i+1} — Class Probabilities",
-                             color='white', fontsize=12)
-                ax.tick_params(colors='white')
-                ax.spines['bottom'].set_color('#444')
-                ax.spines['left'].set_color('#444')
-                ax.spines['top'].set_visible(False)
-                ax.spines['right'].set_visible(False)
-                ax.xaxis.label.set_color('white')
+                    ax.set_xlim(0, 100)
+                    ax.set_xlabel("Confidence (%)", color='white')
+                    ax.set_title(f"Face {i+1} — Class Probabilities",
+                                color='white', fontsize=12)
+                    ax.tick_params(colors='white')
+                    ax.spines['bottom'].set_color('#444')
+                    ax.spines['left'].set_color('#444')
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                    ax.xaxis.label.set_color('white')
 
-                plt.tight_layout()
-                st.pyplot(fig)
-                plt.close()
+                    plt.tight_layout()
+                    st.pyplot(fig)
+                    plt.close()
 
-    elif len(results) == 0 and uploaded_file is not None:
-        st.markdown("---")
-        st.warning("No faces were detected in this image. Try a clearer frontal face photo.")
+        elif len(results) == 0 and uploaded_file is not None:
+            st.markdown("---")
+            st.warning("No faces were detected in this image. Try a clearer frontal face photo.")
 
-    # Cleanup temp file
-    if os.path.exists(temp_path):
-        os.remove(temp_path)
+        # Cleanup temp file
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
 
-else:
-    # Show placeholder when no image uploaded
-    st.info("Upload an image above to get started.")
+    else:
+        # Show placeholder when no image uploaded
+        st.info("Upload an image above to get started.")
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("#### How it works")
-        st.markdown("1. Upload a `.jpg` or `.png` image\n2. Haar Cascade detects faces\n3. CNN classifies each face\n4. Results shown with confidence")
-    with col2:
-        st.markdown("#### Best Results With")
-        st.markdown("- Clear frontal face photos\n- Good lighting\n- Face clearly visible\n- Single or multiple people")
-    with col3:
-        st.markdown("#### Limitations")
-        st.markdown("- Side profile faces may be missed\n- Very small faces may not detect\n- Heavy occlusion may confuse model")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.markdown("#### How it works")
+            st.markdown("1. Upload a `.jpg` or `.png` image\n2. Haar Cascade detects faces\n3. CNN classifies each face\n4. Results shown with confidence")
+        with col2:
+            st.markdown("#### Best Results With")
+            st.markdown("- Clear frontal face photos\n- Good lighting\n- Face clearly visible\n- Single or multiple people")
+        with col3:
+            st.markdown("#### Limitations")
+            st.markdown("- Side profile faces may be missed\n- Very small faces may not detect\n- Heavy occlusion may confuse model")
