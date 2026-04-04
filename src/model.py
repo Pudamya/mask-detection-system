@@ -164,11 +164,12 @@ class ModelTrainer:
                   f"Train Loss: {train_loss:.4f} | Train Acc: {train_acc:.2f}% | "
                   f"Val Loss: {val_loss:.4f} | Val Acc: {val_acc:.2f}%")
 
-            # Save best model (based on validation loss)
+            # Save best model
             if val_loss < self.best_val_loss:
                 self.best_val_loss = val_loss
+                self.best_val_acc = val_acc
                 torch.save(self.model.state_dict(), save_path)
-                print(f" Best model saved (val_loss: {val_loss:.4f})")
+                print(f"Best model saved | val_loss: {val_loss:.4f} | val_acc: {val_acc:.2f}%")
 
         print("\nTraining complete!")
         return self.history
