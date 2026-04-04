@@ -112,21 +112,36 @@ class BasicPreprocessing:
 
     def get_dataloaders(self):
         image_paths, labels = self.import_dataset()
-        X_train, X_val, X_test, y_train, y_val, y_test = self.split_dataset(
-            image_paths, labels
-        )
+        X_train, X_val, X_test, y_train, y_val, y_test = self.split_dataset(image_paths, labels)
         train_transform, val_test_transform = self.get_transforms()
 
         train_dataset = MaskDataset(X_train, y_train, train_transform)
-        val_dataset   = MaskDataset(X_val,   y_val,   val_test_transform)
-        test_dataset  = MaskDataset(X_test,  y_test,  val_test_transform)
+        val_dataset = MaskDataset(X_val, y_val, val_test_transform)
+        test_dataset = MaskDataset(X_test, y_test, val_test_transform)
 
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size,
-                                  shuffle=True,  num_workers=0)
-        val_loader   = DataLoader(val_dataset,   batch_size=self.batch_size,
-                                  shuffle=False, num_workers=0)
-        test_loader  = DataLoader(test_dataset,  batch_size=self.batch_size,
-                                  shuffle=False, num_workers=0)
+        pin_memory = torch.cuda.is_available()
+
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=0,
+            pin_memory=pin_memory
+        )
+        val_loader = DataLoader(
+            val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=pin_memory
+        )
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=0,
+            pin_memory=pin_memory
+        )
 
         return train_loader, val_loader, test_loader
 
