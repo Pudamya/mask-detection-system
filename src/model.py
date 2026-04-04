@@ -111,7 +111,7 @@ class ModelTrainer:
 
         for images, labels in tqdm(train_loader, desc="Training", leave=False):
             images, labels = images.to(self.device), labels.to(self.device)
-
+            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
             self.optimizer.zero_grad()        
             outputs = self.model(images)      
             loss = self.criterion(outputs, labels)  
