@@ -2,9 +2,18 @@
 
 A high-performance **Computer Vision application** that detects whether a person is wearing a face mask using a **custom-built Convolutional Neural Network (CNN)** and an interactive **Streamlit web interface**.
 
-🔗 [**Live Application**](https://mask-detection-system.streamlit.app/)
-🎥 [**Demo Video**](https://drive.google.com/file/d/1iaiqdjvcQes77XQOQAYuBOLt8aRU7hbd/view?usp=sharing)
+<p align="center">
+  🔗 <a href="https://mask-detection-system.streamlit.app/">Live Application</a> •
+  🎥 <a href="https://drive.google.com/file/d/1iaiqdjvcQes77XQOQAYuBOLt8aRU7hbd/view?usp=sharing">Demo Video</a>
+</p>
 
+---
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/d7737aee-bc05-45d8-a2ea-6d713a477883" width="45%" />
+  <img width="45%" height="481" alt="image" src="https://github.com/user-attachments/assets/a8e9108f-af6e-4937-8565-1b452ff0fbb6" />
+ />
+</p>
 
 ---
 
@@ -168,12 +177,12 @@ streamlit run app/streamlit_app.py
 
 The application is deployed using **Streamlit Community Cloud** for easy accessibility and real-time interaction.
 
-🔗 Live Application:
-https://mask-detection-system.streamlit.app/
+🔗 [**Live Application**](https://mask-detection-system.streamlit.app/)
+🎥 [**Demo Video**](https://drive.google.com/file/d/1iaiqdjvcQes77XQOQAYuBOLt8aRU7hbd/view?usp=sharing)
 
 ---
 
-## 🧑‍💻 Author
+## Author
 
 **Pudamya Rathnayake**
 BSc (Hons) Artificial Intelligence & Data Science
